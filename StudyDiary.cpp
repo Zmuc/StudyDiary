@@ -1,3 +1,10 @@
+/* C++ 特性 */
+// C++ 11：Range-based for loops
+vector<int> vec;
+for (int i : vec) { }
+//循环执行容器vec中的所有数据
+
+
 /* 排序 */
 
 // sort：排序
