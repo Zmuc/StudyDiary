@@ -287,7 +287,7 @@ bool save(const QString &filename, const char *format = 0, int quality = -1) con
 bool isNull() const;     // 判断是否为空图像
 
 
-//@ QtGui::Qlcon：表示一系列图像的组合
+//@ QtGui::QIcon：表示一系列图像的组合
 ————————————————————————————————————————————————————————————————————————————————————————
 // 构造：
 QIcon();                          // 构造一个空图像构成的图标
@@ -438,7 +438,6 @@ bool hasEditfocus() const;                // 判断窗口是否有editFocus属�
 void QWidget::setEditFocus(bool enable);  // 设置窗口的editFocus属性
 //editFocus属性：专门用于嵌入式系统，因为嵌入式系统通常键盘较小，没有用于切换焦点的Tab键，所以使用上下方向键切换焦点
 //如果窗口部件设置editFocus属性为true，则上下方向键就不再用于切换焦点，而是发送给这个窗口
-
 
 // 捕获/释放键盘和鼠标等：
 void grabKeyboard();        // 捕获键盘事件
