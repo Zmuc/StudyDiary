@@ -83,6 +83,72 @@ C/C++基础：
 7）悬空指针：指向一块被已经被释放的内存
 8）野指针：不确定其具体指向，最常来自于未初始化
 
+7. 引用
+1）引用&是某一个变量或对象的别名，对引用的操作与对其所绑定的变量或对象的操作完全等价
+2）&不是求地址运算符，而是类似*的标志作用
+3）引用的类型必须和其所绑定的变量的类型相同
+4）声明引用的同时必须初始化
+5）不能将已有的引用名作为其他变量或对象的名字或别名，即不可修改
+6）引用不会开辟新的内存
+7）引用的应用：
+    - 函数参数（int &x）：与指针效果类似，此时函数中对形参的操作实际上是对实参本身进行操作，而不是将实参变量或对象的值拷贝给形参（节省内存空间）
+    - 常引用：不允许通过该引用对其所绑定的变量或对象进行修改
+    - 函数的返回值（int &fun(){}）：在内存中不产生返回值的副本
+    - 实现多态（Son son;Father &ptr = son）：基类的引用用来绑定其派生类，只能用来访问派生类对象中从基类继承下来的成员（通过虚函数实现多态）
+
+8. 内联函数
+1）内联函数在调用时是编译器使用相应的函数代码替换函数调用，所以无需来回跳转
+2）牺牲空间换时间，所以内联函数不能太复杂（代码简短，不能有for，while，switch等）
+3）内联函数应该在头文件中定义，且在函数调用前定义
+
+9. 静态
+1）静态局部变量：生命周期为整个源程序，静态局部变量在函数退出后仍然存在但不可用，下次调用函数时才可使用，且保留变动后的值
+2）静态全局变量：非静态全局变量的作用域是整个源程序，而静态全局变量的作用域则被限制为本源文件有效
+3）静态函数：静态函数的作用域被限制为本源文件有效
+4）类静态成员变量：编译时创建并初始化（类外），属于此类但不属于任何对象，被所有此类对象共享
+5）类静态成员函数：属于此类但不属于任何对象，被所有此类对象共享，一般用于访问该类中的静态数据成员或全局变量
+6）基本类型的静态局部变量若在说明时未赋以初值，则系统自动赋予0值
+
+10. STL
+1）容器（Container）：
+    - vector：向量，尾端处理高效，添加元素时动态分配（内存连续，不足时：分配新空间 - 复制元素 - 释放原空间），删除元素时不释放空间
+    - deque：双端队列，首尾端处理高效，具有分段数组（存储数据），索引数组（每段存储数据的首地址）
+    - list：双向链表，链式存储，不支持随机访问
+    - set/multiset：集合（红黑树，有序），存储一组无重复的元素（multiset可重复），修改某一个元素值时必须先删除元素再插入
+    - map/multimap：映射（红黑树，有序），存储一组无重复键值的元素对（multimap可重复）
+2）迭代器（Iterator）：
+3）算法（Algorithm）：
+4）仿函数（Functor）：
+5）适配器（Adaptor）：
+    - stack：栈，后进先出，默认顺序容器deque（封闭deque一端）
+    - queue：队列，先进先出，默认顺序容器deque（限制在deque末尾添加元素，头部移除元素）
+    - priority_queue：优先队列，优先级最高的元素排在队列头，默认顺序容器vector（限制在vector末尾添加元素，头部移除元素，且push_heap算法将元素最大/小元素排在队列头）
+6）分配器（Allocator）：
+
+
+11. 设计模式
+1）单例模式：
+    - 保证一个类只有一个实例，提供全局访问点来访问
+    - 应用：日志，线程池
+    - 实现：构造函数，拷贝构造/赋值符声明为private（阻止构造和拷贝），定义static函数接口（提供全局访问点，返回在类内部唯一构造的实例）
+2）工厂模式：
+    - 封装对象的创建，分离对象的创建和操作过程，用于批量管理对象的创建过程，便于程序的维护和扩展
+    - 简单工厂模式：
+        - 对于不同产品的创建定义一个工厂类，将产品的类型作为参数传入到工厂的创建函数，根据类型分支选择不同的产品构造函数
+    - 工厂方法模式：
+        - 不同的产品创建采用不同的工厂创建（从工厂的抽象基类派生），这样创建不同的产品过程就由不同的工厂分工解决
+    - 抽象工厂模式：
+        - 当具有多个抽象产品类型时，创建一系列相关或相互依赖的对象接口，而无需指定它们的具体类
+3）策略模式：
+    - 定义了一系列的算法，并将每一个算法封装起来，而且使它们还可以相互替换，让算法独立于使用它的客户而独立变化
+    - 角色：
+        - 抽象策略角色（Strategy）：抽象策略类
+        - 具体策略角色（ConcreteStrategy）：封装了相关的算法和行为
+        - 环境角色（Context）：持有一个策略类的引用，最终给客户端调用
+4）命令模式：
+    - 命令模式将”请求“封装成对象，以便使用不同的请求、队列或者日志来参数化其他对象，也支持可撤销的操作
+
+
 网络：
 ------------------------------------------------------------------------------------------------------------------------
 1. OSI模型
@@ -180,9 +246,124 @@ C/C++基础：
     - MaxSessions=1：禁用多路复用
     - MaxSessions=2+：允许多路复用
 
+3. iptables
+1）iptables位于用户空间，是一个命令行工具，其本质是Netfilter（Linux操作系统核心层内部的数据包处理模块）
+2）iptables链：
+    - INPUT：输入，到本机某进程的报文
+    - OUTPUT：输出，由本机的某进程发出的报文（如响应报文）
+    - PREROUTING：路由前，接收到报文，判断目的是否为本机，是则INPUT，否则FORWARD
+    - FORWARD：转发
+    - POSTROUTING：路由后，发送报文
+3）iptables表：
+    - filter表（内核模块：iptables_filter）：过滤，适用于INPUT，FORWARD，OUTPUT
+    - nat表（iptable_nat）：网络地址转换功能，适用于路由/转发
+    - mangle表（iptable_mangle）：拆解报文并修改，再重新封装，可用于ALL
+    - raw表（iptable_raw）：关闭nat表上启用的连接追踪机制，适用于PREROUTING，OUTPUT
+    - 规则优先级：raw -> mangle -> nat -> filter
+4）匹配条件：
+    - 基本匹配条件：源地址Source IP，目标地址Destination IP
+    - 扩展匹配条件：源端口Source Port, 目标端口Destination Port
+5）处理动作：
+    - ACCEPT：允许数据包通过
+    - DROP：直接丢弃数据包，不给任何回应信息，发送端超时才知
+    - REJECT：拒绝数据包通过，必要时会给发送端发送响应
+    - SNAT：源地址转换，解决内网用户用同一个公网地址上网的问题
+    - MASQUERADE：是SNAT的一种特殊形式，适用于动态的IP
+    - DNAT：目标地址转换。、
+    - REDIRECT：在本机做端口映射
+    - LOG：/var/log/messages文件中记录日志信息，不做处理
+6）iptables使用举例：iptables -t filter -I INPUT -s x.x.x.x -j DROP
+    - t：指定要操作的表，不使用-t默认操作filter表
+    - I：插入，即在添加规则（默认链首（可跟编号指定插入位置），-A则是在链尾添加，-D删除指定编号，-F清空）
+    - s：匹配条件中的源地址
+    - j：匹配条件满足时执行的处理工作
+    - 解释：将规则[将来自x.x.x.x的报文都丢弃]插入filter表中
 
 安全：
 ------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+多媒体：
+------------------------------------------------------------------------------------------------------------------------
+1. 媒体
+1）原始数据（音频/视频） -> 压缩编码（pcm，mpeg/mpeg，h264） -> 封装/复用容器 -> 本地/流 -> 媒体源
+2）媒体源 -> 解封装/解复用 -> 音频/视频流（缓存区，匹配解复用和解码间的速度） -> 解码 -> 音视频同步输出（播放/显示）
+
+2. Gstreamer
+1）Gstreamer支持Windows/Linux/Android等的跨平台多媒体框架
+2）应用程序通过管道（Pipeline）的方式，将多媒体处理的各个步骤串联起来，每个步骤通过元素（Element）基于GObject对象系统通过插件（plugins）的方式实现
+3）基础概念：
+    - Element：元素对象类型，实现一个功能（读取文件，解码，输出等），多个Element串联实现一个Pipeline
+    - Pad：Element的输入/输出接口，分为src pad（生产数据）和sink pad（消费数据），将两个Element连接（前src pad -> 后sink pad）起来处理
+    - Bin：容器，用于管理多个Element，当Bin状态改变时，会自动去修改所管理的Element的状态，也会转发所收到的消息
+    - Pipeline：继承自Bin，提供一个bus用于传输消息，并且对所有子Element进行同步（Pipeline的状态设置为PLAYING时，通过一个/多个新的线程中通过element处理数据）
+4）Gstreamer结构：
+    - Core Framework（核心框架）：
+        - 上层应用接口
+        - Piugin框架
+        - Pipline框架
+        - 数据在Element间的传输及处理机制
+        - 媒体流（Streaming）间的同步（音视频同步等）
+    - Plugins：
+        - Protocols：负责协议的处理，file，http，rtsp等
+        - Sources：负责数据源的处理，alsa，v4l2，tcp/udp等
+        - Formats：负责媒体容器的处理，wav，mp4，ogg等
+        - Codecs：负责媒体的编解码，mp3，vorbis等
+        - Filters：负责媒体流的处理，converters，mixers，effects等
+        - Sinks：负责媒体流输出到指定设备或目的地，alsa，xvideo，tcp/udp等
+    - 工具：
+        - gst-inspect-1.0：查看Gstreamer的Plugin、Element的信息
+        - gst-launch-1.0：用于创建及执行一个Pipline，常用来验证相关功能
+        - gst-discoverer-1.0：显示文件元数据和流信息
+5）Gstreamer相关包：
+    - gstreamer: 核心包，核心框架（Framework）和元素（Element）
+    - gst-plugins-base: gstreamer所需的基础插件
+    - gst-plugins-good: LGPL开源许可的高质量插件
+    - gst-plugins-ugly: GPL等其他严格开源许可的高质量插件，如GPL开源许可的x264，x265
+    - gst-plugins-bad: 尚未成熟的插件
+6）使用举例（gst-launch-1.0播放音频过程会涉及的函数）：
+    - GstElement *pipeline = gst_pipeline_new("管道名")：创建管道
+    - GstElement *source = gst_element_factory_make("filesrc" , "元件名")：创建真实元件（filesrc/fakesrc两种源元件，make函数实际由find和create函数组合）
+    - g_object_set(G_OBJECT(source), "location", file_file, NULL)：设置源元件source的location参数
+    - GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline))：得到管道pipeline的消息总线
+    - gst_bus_add_watch(bus, call_func, loop)：消息监控，call_func消息处理函数，loop为GMainLoop *
+    - gst_bin_add_many(GST_BIN(pipeline), source, decoder, sink, NULL)：将多个组件（source，decoder，sink）添加到管道中
+    - gst_element_link_many(source, decoder, sink, NULL)：将多个组件依次连接
+    - gst_element_set_state(pipeline, GST_STATE_PLAYING)：设置管道状态，即开始播放（对播放音频而言，NULL空，READY准备，PAUSED暂停，PLAYING播放，但实际是组件的数据在处理）
+    - gst_element_unref(source)：释放Element元素
+
+3. FFmpeg
+1）Fast Forward Moving Picture Experts Group
+2）FFMPEG关键结构体
+    - 解协议（http，rtmp等）：AVIOContext（管理输入输出数据，带缓冲），URLContext（协议对象及协议操作对象），URLProtocol（协议操作对象，对应一种协议对象）
+    - 解封装/复用（flv，mp4等）：AVFormatContext（存储音视频封装格式中包含的信息，较多的码流参数），AVInputFormat（输入音视频使用的封装格式，对应一种容器）
+    - 解码（h264，mpeg2）：AVStream（存储音视频流的相关数据，对应一个AVCodecContext），AVCodecContext（存储音视频流解码方式的相关数据，对应一个AVCodec），AVCodec（包含该音视频对应的解码器）
+    - 存数据（视频1帧/结构，音频多帧/结构）：AVPacket（解码前数据，包），AVFrame（解码后数据，帧）
+    - 关键结构体之间的关联（解码为例）：
+        - AVFormatContext -> AVIOContext -> URLContext -> URLProtocol  - 协议层面
+                          -> AVInputFormat  - 解封装/复用层面
+                          -> AVStream（0/1,音频或视频） -> AVCodecContext -> AVCodec  - 解码层面
+3）重要模块/库：
+    - AVUtil：核心工具库，基本的音视频处理操作
+    - AVFormat：文件格式和协议库，常用于读写文件及信息
+    - AVCodec：编解码库
+    - AVFilter：滤镜库，提供了包括音视频特效的处理
+4）工具：
+    - ffmpeg：用于媒体文件转换，如转码，可选编码器、视频时长、帧率、采样格式等
+    - ffplay：用于播放媒体文件
+    - ffprobe：用于查看媒体文件头信息
+5）使用举例（读取音视频文件时长会涉及的函数）：
+    - AVFormatContext *formatCtx = NULL：声明定义一个空的AVFormatContext结构体
+    - av_register_all()：注册所有的编解码器、复用/解复用组件
+    - avformat_network_init()：初始化网络，以支持流媒体
+    - avformat_open_input(&formatCtx, url, NULL, NULL)：打开多媒体数据并且获取一些信息，将之存在formatCtx中
+    - formatCtx->duration/1000000：formatCtx，即AVFormatContext结构体包含了时长信息，为duration，单位为毫秒
+    - avformat_close_input(&formatCtx)：释放动作
+
+
+
 
 
 
@@ -250,3 +431,14 @@ C/C++基础：
 2）1字节 = 8位 = 8bit（比特）
 3）汉字/中文标点符号 = 1字符；字母/数字/英文标点符号 = 1字节
 
+8. 操作系统启动流程
+1）加载BIOS（包含硬件CPU，内存，磁盘等）
+2）读取MBR主引导记录（将Boot Loader复制到0x7c00地址所在物理空间，进行引导）
+3）GRUB引导（引导启动操作系统）
+4）加载Kernel内核（调取内存映像进行内核解压缩，再调用start_kernel()函数来初始化各种设备）
+5）init进程启动（Linux操作系统第一个守护进程init，读取/etc/inittab设定的运行等级）
+6）加载rc.sysinit（Linux操作系统第一个执行的用户层文件/etc/rc.d/rc.sysinit，设定PATH、/proc、网络配置、启动swap分区等）
+7）加载内核模块
+8）启动rc0.d-rc6.d（初始化工作和启动相应的服务）
+9）启动自定义服务（/etc/rc.d/rc.local，系统开机时会读取）
+10）执行/bin/login（登录）
