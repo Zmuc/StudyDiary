@@ -1,0 +1,74 @@
+1. 媒体
+1）原始数据（音频/视频） -> 压缩编码（pcm，mpeg/mpeg，h264） -> 封装/复用容器 -> 本地/流 -> 媒体源
+2）媒体源 -> 解封装/解复用 -> 音频/视频流（缓存区，匹配解复用和解码间的速度） -> 解码 -> 音视频同步输出（播放/显示）
+
+2. Gstreamer
+1）Gstreamer支持Windows/Linux/Android等的跨平台多媒体框架
+2）应用程序通过管道（Pipeline）的方式，将多媒体处理的各个步骤串联起来，每个步骤通过元素（Element）基于GObject对象系统通过插件（plugins）的方式实现
+3）基础概念：
+    - Element：元素对象类型，实现一个功能（读取文件，解码，输出等），多个Element串联实现一个Pipeline
+    - Pad：Element的输入/输出接口，分为src pad（生产数据）和sink pad（消费数据），将两个Element连接（前src pad -> 后sink pad）起来处理
+    - Bin：容器，用于管理多个Element，当Bin状态改变时，会自动去修改所管理的Element的状态，也会转发所收到的消息
+    - Pipeline：继承自Bin，提供一个bus用于传输消息，并且对所有子Element进行同步（Pipeline的状态设置为PLAYING时，通过一个/多个新的线程中通过element处理数据）
+4）Gstreamer结构：
+    - Core Framework（核心框架）：
+        - 上层应用接口
+        - Piugin框架
+        - Pipline框架
+        - 数据在Element间的传输及处理机制
+        - 媒体流（Streaming）间的同步（音视频同步等）
+    - Plugins：
+        - Protocols：负责协议的处理，file，http，rtsp等
+        - Sources：负责数据源的处理，alsa，v4l2，tcp/udp等
+        - Formats：负责媒体容器的处理，wav，mp4，ogg等
+        - Codecs：负责媒体的编解码，mp3，vorbis等
+        - Filters：负责媒体流的处理，converters，mixers，effects等
+        - Sinks：负责媒体流输出到指定设备或目的地，alsa，xvideo，tcp/udp等
+    - 工具：
+        - gst-inspect-1.0：查看Gstreamer的Plugin、Element的信息
+        - gst-launch-1.0：用于创建及执行一个Pipline，常用来验证相关功能
+        - gst-discoverer-1.0：显示文件元数据和流信息
+5）Gstreamer相关包：
+    - gstreamer: 核心包，核心框架（Framework）和元素（Element）
+    - gst-plugins-base: gstreamer所需的基础插件
+    - gst-plugins-good: LGPL开源许可的高质量插件
+    - gst-plugins-ugly: GPL等其他严格开源许可的高质量插件，如GPL开源许可的x264，x265
+    - gst-plugins-bad: 尚未成熟的插件
+6）使用举例（gst-launch-1.0播放音频过程会涉及的函数）：
+    - GstElement *pipeline = gst_pipeline_new("管道名")：创建管道
+    - GstElement *source = gst_element_factory_make("filesrc" , "元件名")：创建真实元件（filesrc/fakesrc两种源元件，make函数实际由find和create函数组合）
+    - g_object_set(G_OBJECT(source), "location", file_file, NULL)：设置源元件source的location参数
+    - GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline))：得到管道pipeline的消息总线
+    - gst_bus_add_watch(bus, call_func, loop)：消息监控，call_func消息处理函数，loop为GMainLoop *
+    - gst_bin_add_many(GST_BIN(pipeline), source, decoder, sink, NULL)：将多个组件（source，decoder，sink）添加到管道中
+    - gst_element_link_many(source, decoder, sink, NULL)：将多个组件依次连接
+    - gst_element_set_state(pipeline, GST_STATE_PLAYING)：设置管道状态，即开始播放（对播放音频而言，NULL空，READY准备，PAUSED暂停，PLAYING播放，但实际是组件的数据在处理）
+    - gst_element_unref(source)：释放Element元素
+
+3. FFmpeg
+1）Fast Forward Moving Picture Experts Group
+2）FFMPEG关键结构体
+    - 解协议（http，rtmp等）：AVIOContext（管理输入输出数据，带缓冲），URLContext（协议对象及协议操作对象），URLProtocol（协议操作对象，对应一种协议对象）
+    - 解封装/复用（flv，mp4等）：AVFormatContext（存储音视频封装格式中包含的信息，较多的码流参数），AVInputFormat（输入音视频使用的封装格式，对应一种容器）
+    - 解码（h264，mpeg2）：AVStream（存储音视频流的相关数据，对应一个AVCodecContext），AVCodecContext（存储音视频流解码方式的相关数据，对应一个AVCodec），AVCodec（包含该音视频对应的解码器）
+    - 存数据（视频1帧/结构，音频多帧/结构）：AVPacket（解码前数据，包），AVFrame（解码后数据，帧）
+    - 关键结构体之间的关联（解码为例）：
+        - AVFormatContext -> AVIOContext -> URLContext -> URLProtocol  - 协议层面
+                          -> AVInputFormat  - 解封装/复用层面
+                          -> AVStream（0/1,音频或视频） -> AVCodecContext -> AVCodec  - 解码层面
+3）重要模块/库：
+    - AVUtil：核心工具库，基本的音视频处理操作
+    - AVFormat：文件格式和协议库，常用于读写文件及信息
+    - AVCodec：编解码库
+    - AVFilter：滤镜库，提供了包括音视频特效的处理
+4）工具：
+    - ffmpeg：用于媒体文件转换，如转码，可选编码器、视频时长、帧率、采样格式等
+    - ffplay：用于播放媒体文件
+    - ffprobe：用于查看媒体文件头信息
+5）使用举例（读取音视频文件时长会涉及的函数）：
+    - AVFormatContext *formatCtx = NULL：声明定义一个空的AVFormatContext结构体
+    - av_register_all()：注册所有的编解码器、复用/解复用组件
+    - avformat_network_init()：初始化网络，以支持流媒体
+    - avformat_open_input(&formatCtx, url, NULL, NULL)：打开多媒体数据并且获取一些信息，将之存在formatCtx中
+    - formatCtx->duration/1000000：formatCtx，即AVFormatContext结构体包含了时长信息，为duration，单位为毫秒
+    - avformat_close_input(&formatCtx)：释放动作
