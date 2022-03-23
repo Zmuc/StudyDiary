@@ -1,0 +1,42 @@
+1. Linux操作系统启动流程
+1）加载BIOS（包含硬件CPU，内存，磁盘等）
+2）读取MBR主引导记录（将Boot Loader复制到0x7c00地址所在物理空间，进行引导）
+3）GRUB引导（引导启动操作系统）
+4）加载Kernel内核（调取内存映像进行内核解压缩，再调用start_kernel()函数来初始化各种设备）
+5）init进程启动（Linux操作系统第一个守护进程init，读取/etc/inittab设定的运行等级）
+6）加载rc.sysinit（Linux操作系统第一个执行的用户层文件/etc/rc.d/rc.sysinit，设定PATH、/proc、网络配置、启动swap分区等）
+7）加载内核模块
+8）启动rc0.d-rc6.d（初始化工作和启动相应的服务）
+9）启动自定义服务（/etc/rc.d/rc.local，系统开机时会读取）
+10）执行/bin/login（登录）
+
+2. GDB
+1）GDB调试的是可执行文件
+2）终端命令行：gdb 可执行文件
+3）GDB命令行的调试命令(gdb)：
+    - 流程：
+        - run/r：运行程序，可跟可执行文件需要的传参
+        - start：单步运行程序，在第一句执行语句处停止
+        - next/n：单步执行（过程），函数直接执行
+        - step/s：单步执行（语句），函数跳转到内部语句
+        - finish：结束当前函数，返回到函数调用点
+        - break/b + n：在第n行设置断点
+        - delete breakpoints/d + n：删除第n个断点
+        - enable breakpoints：启用断点
+        - disable breakpoints：禁用断点
+        - continue/c：继续运行
+        - quit/q：退出调试
+    - 查询：
+        - list/l：查看代码，可跟行号或函数名
+        - info/i：查看函数内部局部变量的数值
+        - info breakpoints：查看当前设置的所有断点
+        - info watch：显示观察点
+        - print/p：打印值及地址
+        - backtrace/bt：查看函数调用的栈帧和层级关系
+        - frame/f：切换函数的栈帧
+        - display：追踪查看具体变量值
+        - undisplay：取消追踪观察变量
+        - watch：被设置观察点的变量发生修改时，打印显示
+        - x NFU：查看内存，如20xw（20-20个单元，x-16进制，w-4字节每单元）
+    - 其他：
+        - help/h：命令帮助

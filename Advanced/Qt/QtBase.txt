@@ -1,0 +1,88 @@
+1. Qt开发界面的两种方式
+1）Qt Designer（设计模式）：通过拖拽控件到画布上，再定义样式表和槽函数...
+2）C++代码开发...
+
+2. Qt开发三层架构
+1）表现层（UI）：用户界面
+2）业务逻辑层（BLL）：处理数据业务逻辑
+3）数据访问层（DAL）：操作数据库，实现增删改查
+
+3. Qt三大核心机制
+1）元对象系统
+    - QObject类
+    - Q_OBJECT宏：默认私有，实现信号与槽机制或动态对象属性
+    - moc（元对象编译器）：处理Q_OBJECT宏
+2）信号与槽
+3）事件循环
+
+4. QObject类
+1）核心类，所有Qt对象的基类
+2）三大核心功能：
+    - 信号与槽
+    - 内存管理：对象树，构造函数中可指定parent，当parent销毁后，其子对象（在children()列表中）也会销毁
+    - 事件处理：事件循环中的Qt事件由QObject接收并处理
+3）QObject禁用拷贝构造函数和赋值运算符
+4）QObject如有父类则必须在同一线程
+5）QObject的成员变量默认不是其子对象
+
+5. 信号与槽
+1）对象间通信，基于Q_OBJECT
+2）借助moc（Meta Object Compiler）预处理工具实现
+3）信号在signals关键字下，槽在public/protected/private slots关键字下
+4）槽可以与信号连接，槽参数不能有缺省值，其余和C++成员函数一样
+5）信号与槽，实际是观察者模式
+6）信号与槽连接用connect(sender, signal, receiver, slot)；取消连接用disconnect
+7）信号与槽函数返回值是void
+8）通过emit来发送信号
+9）connect函数第五个参数：
+    - Qt::AutoConnection： 默认值，在信号发送时决定，如果接收者和发送者同线程（Qt::DirectConnection），不同线程（Qt::QueuedConnection）
+    - Qt::DirectConnection：槽函数会在信号发送的时候直接被调用，运行于信号发送者所在线程
+    - Qt::QueuedConnection：槽函数在控制回到接收者所在线程的事件循环时被调用，槽函数运行于信号接收者所在线程（不会立即调用，而是等待事件循环，常用于多线程）
+    - Qt::BlockingQueuedConnection：槽函数的调用时机与Qt::QueuedConnection一致，不过发送完信号后发送者所在线程会阻塞，直到槽函数运行完（接收者和发送者同线程时死锁）
+    - Qt::UniqueConnection：通过“|”与以上四个结合使用，重复连接会失败
+
+6. 事件循环
+1）Qt是基于事件驱动的
+2）main函数中QCoreApplication/QGuiApplication/QApplication，调用exec来开启EventLoop（事件循环）
+3）每个线程都允许有自己的事件循环，默认run()通过exec()来开启事件循环
+4）Qt将软件中断转换为Qt事件，所有事件类都是由QEvent派生
+5）Qt事件由QObject接收
+6）Qt事件循环：Qt事件被分发到事件队列中，当队列中有事件时就发送给QObject对象，当队列为空时就阻塞并等待事件
+7）事件常用类型：
+    - QMouseEvent：鼠标事件
+    - QKeyEvent：键盘事件
+    - QPaintEvent：绘制事件
+    - QResizeEvent：窗口尺寸改变事件
+    - QScrollEvent：滚动事件
+    - QShowEvent：控件显示事件
+    - QHideEvent：控件隐藏事件
+    - QTimerEvent：定时器事件
+8）事件过滤：
+    - 监听控件：控件->installEventFilter(this);
+    - 过滤事件：bool eventFilter(QObject *watched, QEvent *event);
+9）处理接收到的消息：bool event(QEvent *event);
+
+7. 布局的两种方法
+1）QLayout布局：
+    - QHBoxLayout：水平布局
+    - QVBoxLayout：垂直布局
+    - QGridLayout：栅格布局
+    - QFormLayout：表单布局
+2）固定布局：
+    - 固定控件大小
+    - 固定控件位置
+
+8. QT Creator常用默认快捷键
+1）Ctrl+R：运行
+2）Ctrl+I：自动对齐
+3）Ctrl+/：注释
+4）Ctrl+左键：跳转到类，结构体或函数的声明定义
+5）Alt+Enter：跳转函数定义（无则创建），跳转设置/获取变量函数（无则创建），更改代码命名风格
+
+9. QPro
+1）TEMPLATE = app：告知qmake是何项目，此处为app（应用程序）项目模板
+2）QT += core gui：Qt使用的库（大类，core gui等）
+3）CONFIG += C++11：兼容C++11的编译器
+4）SOURCES/HEADERS/FORMS += *：编译的所有源文件（.c/.cpp）/头文件（.h）/界面文件（.ui）
+5）RESOURCES += images.qrc：资源合集（自定义.qrc名称，如用来存放切图，QSS等），内置于可执行文件中
+6）LIBS += -lpcap：依赖的外部库（-lpcap即libpcap.so.xxxx）

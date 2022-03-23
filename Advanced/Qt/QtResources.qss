@@ -1,0 +1,33 @@
+// 滚动条-垂直
+QScrollBar:vertical {
+        max-width: 10px;
+        background: #F2F2F2;
+        margin: 40px, 10px, 10px, 10px;
+        padding: 0px;
+}
+
+// 滚动条-垂直-滑块
+QScrollBar::handle:vertical {
+        background: #A5A5A5;
+        border-radius: 4px;
+}
+
+// 滚动条-垂直-滑块-悬停
+QScrollBar::handle:vertical:hover {
+        background: #C2C2C2;
+}
+
+// 滚动条-垂直-滑块-按压
+QScrollBar::handle:vertical:pressed {
+        background: #7A7A7A;
+}
+
+// 滚动条-垂直-上箭头
+QScrollBar::add-line:vertical {
+        background: url(:/images/invalid_is_null.png);
+}
+
+// 滚动条-垂直-下箭头
+QScrollBar::sub-line:vertical {
+        background: url(:/images/invalid_is_null.png);
+}
