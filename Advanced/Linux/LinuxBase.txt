@@ -40,3 +40,35 @@
         - x NFU：查看内存，如20xw（20-20个单元，x-16进制，w-4字节每单元）
     - 其他：
         - help/h：命令帮助
+
+3. GCC
+1）GCC（GNU C Compiler -> GNU Compiler Collection，GNU编译器套件）
+2）支持多种语言，如C/C++，Java，Objective C等
+3）编译过程：预处理(也称预编译，Preprocessing) -> 编译(Compilation) -> 汇编 (Assembly) -> 链接(Linking)
+    - 预处理
+        - 展开所有的宏定义（#define）
+        - 处理所有的条件预编译指令（#if，#ifdef等）
+        - 删除所有注释
+        - 添加行号和文件标识（调式，报错警告等行为使用）
+        - 保留#pragma
+    - 编译：对预处理完的文件进行一系列的词法/语法/语义分析，优化后生成相应的汇编代码
+    - 汇编：对汇编代码进行处理，生成处理器能识别的指令（Binutils的汇编器as根据汇编指令和处理器指令的对照表一一翻译）
+    - 链接：
+        - 静态链接：编译阶段直接把静态库加入到可执行文件中，链接器必须完成符号解析和重定位（主要）
+        - 动态链接：链接阶段仅加入描述信息，程序执行时再将动态库加载到内存中（可通过ldd查看可执行程序依赖的动态库/共享库）
+            - GCC编译链接时的动态库搜索路径顺序：gcc命令参数-L -> 环境变量LIBRARY_PATH -> 默认路径（/lib，/usr/lib，/usr/local/lib等）
+            - 二进制文件执行时的动态库搜索路径顺序：编译时指定的动态库路径 -> 环境变量LD_LIBRARY_PATH -> 配置文件/etc/ld.so.conf中 -> 默认路径
+4）一步编译：gcc test.c（源码文件）-o test（二进制）
+5）分步编译：
+    - 预处理：gcc -E test.c -o test.i（预处理后的文件）
+    - 编译：gcc -S test.i -o test.s（汇编文件）
+    - 汇编：gcc -c test.s -o test.o（可重定位目标文件/机器码文件）
+    - 链接：gcc test.o -o test（.out，二进制可执行目标文件）
+6）链接时动态库和静态库的路径重合问题：如libtest.a和libtest.so
+    - gcc链接时默认优先选择动态库
+    - 指定gcc选项-static，会强制使用静态库进行链接
+7）ELF文件（Executable and Linkable Format，可执行链接格式）：包括可重定向目标文件（.o）、可执行目标文件（.out）、共享目标文件（库文件，即静态库.a/动态库.so）
+
+
+4. 环境变量
+1)LD_LIBRARY_PATH
