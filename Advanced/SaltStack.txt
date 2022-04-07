@@ -1,0 +1,75 @@
+1. SaltStack介绍
+1）基础平台管理工具，配置管理系统，能维护（分布式远程执行系统）预定义的远程节点
+2）采用C/S模式，C（Client端）即Minion，S（Server端）即Master，两者之间通过ZeroMQ消息队列通信
+3）基于Python
+
+2. SaltStack核心功能
+1）远程执行：支持Master通过agent/ssh方式在Minion远程执行
+2）配置管理：SaltStack执行配置的状态
+3）云管理：用于管理云主机
+4）事件驱动：当达成某事件时被动执行
+
+3. SaltStack基本原理
+1）SaltStack采用C/S模式，Minion与Master之间通过ZeroMQ消息队列通信（发布-订阅模式，连接方式：Tcp/Ipc）
+2）Minion上线后将pub key发给Master，Master查看（salt-key -L能看到Minion key）并接受（salt-key -a）就已互信
+    - Minion/Master初次启动会在/etc/salt/pki/master生成公钥和私钥
+    - Master存放Minion的公钥位置（Master中）：
+        - /etc/salt/pki/master/minions_pre/：未认证
+        - /etc/salt/pki/master/minions/：已通过认证
+    - Master通过认证的同时会将其公钥发送给Minion（Minion中，/etc/salt/pki/minion/minion_master.pub）
+    - 双向密钥交换完成
+3）Master可发送指令到Minion（模块化）
+    - 将cmd.run命令（salt命令，如cmd.run ls）从salt.client.LocalClient.cmd_cli发布到Master，并获取Jodid（根据Jodid获取命令执行结果）
+    - Master接收到命令后，发送给Minion（通过ZeroMQ消息队列通信）
+    - Minion从消息总线上接收命令，交给minion._handle_aes处理
+    - minion._handle_aes发起本地线程调用cmdmod执行命令
+    - 本地线程执行完命令后，minion._return_pub将执行结果通过消息总线返回给Master
+    - Master接收到Minion返回结果，master._handle_aes将结果写入文件中
+    - salt.client.LocalClient.cmd_cli通过轮询获取Job执行结果并输出到终端
+
+4. SaltStack具体操作步骤
+1）安装salt包：
+    - 服务器端/Master：安装salt-master
+    - 客户端/Minion：安装salt-minion
+2）初始化配置文件：
+    - Master：修改/etc/salt/master，需要配置salt的存放目录（base环境必要，指定top.sls存放）
+        - file_roots:
+            base:
+                /srv/salt
+    - Minion：修改/etc/salt/minion，需要配置Master的ip
+        - master：xxx.xxx.xxx.xxx
+3）启动服务：
+    - Master：systemctl start salt-master.service
+    - Minion：systemctl start salt-minion.service
+4）认证：
+    - Master：服务第一次启动时，/etc/salt/pki/master/会生成下master.pem
+        - salt-key -L：能看到所有Minion的公钥，都处于［Unaccepted Keys］
+        - salt-key -a xxx：接受xxx主机名Minion的认证，移入［Accepted Keys］（同时将Master公钥发送到该Minion，互信）
+    - Minion：服务第一次启动时，/etc/salt/pki/minion/会生成下minion.pem（私钥），minion.pub（公钥，生成后发送Master）
+5）完成：认证完成即可以开始管理
+    - 可通过test.ping测试Master与Minion是否连通
+    - 异常时可通过systemctl status salt-master.service/salt-minion.service查看状态
+    - 处理完异常需要重新启动服务systemctl restart salt-master.service/salt-minion.service
+
+5. 配置管理/SLS
+1）配置管理的实现是SLS，由格式简单的数据构成，描述了系统的目标状态
+2）SLS（SaLt State文件/.sls文件）是Salt State系统的核心
+3）SLS采用YAML格式编写
+    - YAML格式：
+        - 禁用Tab，用空格
+        - 子级缩进2空格，**:,-间隔1空格
+        - 数字文本会解析为数字（0640->640），需要用单引号括起来
+        - 不允许双简写
+        - 下划线自动删除，需要用双引号括起来
+4）基本格式：
+    - httpd:
+        pkg:
+          - installed
+    - 安装（- installed，函数定义）httpd（httpd，标签定义）包（pkg，状态定义）
+
+6. SaltStack常用模块
+1）test模块
+    - salt '*' test.ping：测试Master与Minion是否连通
+2）cmd模块
+    - salt '*' cmd.run 'ls -l'：实现远程命令执行
+    - salt '*' cmd.script 'xxx.sh'：实现SHELL脚本执行

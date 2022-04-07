@@ -1,33 +1,107 @@
-// 滚动条-垂直
+/*------------------------------------*/
+/* 1. 滚动条QScrollBar                 */
+/*------------------------------------*/
+/* 滚动条-垂直 */
 QScrollBar:vertical {
         max-width: 10px;
         background: #F2F2F2;
-        margin: 40px, 10px, 10px, 10px;
-        padding: 0px;
+        margin: 40px, 10px, 10px, 10px; /* margin：外边距，4个参数分别是上右下左 */
+        padding: 0px; /* padding：内边距，1个参数则设置上右下左都是0px */
 }
-
-// 滚动条-垂直-滑块
+/* 滚动条-垂直-滑块 */
 QScrollBar::handle:vertical {
         background: #A5A5A5;
         border-radius: 4px;
 }
-
-// 滚动条-垂直-滑块-悬停
+/* 滚动条-垂直-滑块-鼠标悬停 */
 QScrollBar::handle:vertical:hover {
         background: #C2C2C2;
 }
-
-// 滚动条-垂直-滑块-按压
+/* 滚动条-垂直-滑块-鼠标按压 */
 QScrollBar::handle:vertical:pressed {
         background: #7A7A7A;
 }
-
-// 滚动条-垂直-上箭头
+/* 滚动条-垂直-上箭头 */
 QScrollBar::add-line:vertical {
-        background: url(:/images/invalid_is_null.png);
+        background: url(:/images/invalid_is_null.png); /* image无效即可 */
 }
-
-// 滚动条-垂直-下箭头
+/* 滚动条-垂直-下箭头 */
 QScrollBar::sub-line:vertical {
         background: url(:/images/invalid_is_null.png);
 }
+
+/*------------------------------------*/
+/* 2. 菜单QMenu                        */
+/*------------------------------------*/
+/* 菜单 */
+QMenu {
+        background-color: #FFFFFF; /* background：背景 */
+        border: 1px solid; /* border：边框，如左：1px的实线边框 */
+        border-radius: 2px; /* 圆角2px */
+}
+/* 菜单-项 */
+QMenu::item {
+        font-size: 12px;
+        font-family: Source Han Sans CN; /* 字体，如宋体，微软雅黑等 */
+        color: #000000; /* 等同于font-color */
+        background-color: #FFFFFF;
+        padding-top: 6px; /* padding可以设置上右下左，也可以分开设置 */
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 6px;
+        margin: 1px 1px; /* margin2个参数即上右 */
+}
+/* 菜单-项-鼠标选择 */
+QMenu::item:selected {
+        background-color: #9bcae9;
+}
+/* 菜单-项-鼠标按压 */
+QMenu::item:pressed {
+        background-color: #4ca6e2;
+}
+/* 菜单-分割项 */
+QMenu::separator {
+        height: 1px;
+        background-color: #404040;
+        margin-left: 6px;
+        margin-right: 6px;
+}
+
+/*------------------------------------*/
+/* 3. 列表界面QListWidget              */
+/*------------------------------------*/
+/* 列表界面 */
+QListWidget {
+        border: outset;
+        outline: 0px; /* 轮廓 */
+}
+/* 列表界面-项 */
+QListWidget::Item {
+        border-radius: 6px;
+        height: 54px;
+}
+/* 列表界面-项-鼠标悬停 */
+QListWidget::Item:hover {
+        background: #F2F2F2;
+}
+/* 列表界面-项-鼠标选择 */
+QListWidget::item:selected {
+        background: #E6E6E6;
+        border: outset;
+}
+
+/*------------------------------------*/
+/* 4. 按钮QPushButton && 标签QToolTip  */
+/*------------------------------------*/
+/* 按钮 */
+QPushButton {
+        border: none; /* 无边框 */
+        background: transparent; /* 透明 */
+        background-image: url(:/images/btn.png); /* 自定义按钮切图（即背景） */
+}
+/* 标签（同按钮一齐设置可改变此按钮的标签） */
+QToolTip {
+        background: #F3F3F3;
+        border: 1px solid #9B9B9B;
+}
+

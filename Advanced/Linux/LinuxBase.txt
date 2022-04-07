@@ -69,6 +69,59 @@
     - 指定gcc选项-static，会强制使用静态库进行链接
 7）ELF文件（Executable and Linkable Format，可执行链接格式）：包括可重定向目标文件（.o）、可执行目标文件（.out）、共享目标文件（库文件，即静态库.a/动态库.so）
 
+4. 常用的系统环境变量（持续更新...）
+1）自定义系统环境变量：/etc/profile中，export VALUE=*
+2）自定义用户环境变量：
+    - ~/.bash_profile：存在该文件时，用户登录shell时执行，且不再执行~/.profile
+    - ~/.profile：用户登录时执行
+    - ~/.bashrc：用户登录时/每次打开新shell时执行
+3）PATH（/usr/bin:...:/usr/sbin）：命令搜索路径
+4）LD_LIBRARY_PATH：动态库搜索路径
+5）HOME：用户的主工作目录/登录进入的默认目录，即~
 
-4. 环境变量
-1)LD_LIBRARY_PATH
+5. 常用的系统文件/目录（持续更新...）
+1）/usr：共享资源（Unix Shared Resources）目录
+    - /usr/bin：系统用户使用的命令
+    - /usr/sbin：超级用户使用的命令（较高级管理/系统守护程序）
+    - /usr/src：内核源代码默认目录
+2）/bin：命令（Binaries二进制文件）目录
+3）/sbin：超级用户命令（Superuser Binaries）目录
+4）/lib：动态库（Library）目录
+5）/etc：系统配置文件（Etcetera）目录
+    - /etc/profile：配置系统shell信息
+    - /etc/hosts：本地域名解析文件
+    - /etc/resolv.conf：DNS域名解析配置文件
+    - /etc/rc，/etc/rc.d，/etc/rc*.d：启动/变更时各级别的脚本
+    - /etc/crontab：定时计划服务
+    - /etc/sudoers：sudo命令相关配置
+    - /etc/syslog.conf：系统日志参数配置文件
+    - /etc/passwd：用户数据，包括用户名，用户ID，用户状态，家目录等
+    - /etc/group：用户组数据
+    - /etc/shadow：用户影子文件，包括密码密文等
+    - /etc/audit/auditd.conf：安全审计配置文件
+    - /etc/audit/audit.rules：审计规则文件
+6）/dev：外部设备（Device）目录
+7）/proc：进程（Processes）目录（/proc是伪文件系统，即虚拟文件系统，是系统内存的映射）
+8）/root：超级用户（系统管理员root）目录
+9）/home：普通用户主目录，每个用户在其下拥有单独子目录（子目录名即用户名）
+10）/boot：Linux启动时核心文件的目录
+11）/media：U盘、光驱等媒体设备的目录
+12）/mnt：临时挂载其他文件系统的目录
+13）/srv：服务启动后需提取的数据的目录
+14）/sys：文件系统sysfs（进程proc，设备devfs，伪终端devpts文件系统），直观反映了内核设备树
+15）/var：不断扩充，经常修改（Variable）的目录
+    - /var/run：->/run
+    - /var/log/messages：一般的系统日志
+    - /var/log/kern.log：系统内核日志（非法接入设备时可查看）
+    - /var/log/boot.log：系统启动日志
+    - /var/log/auth.log：登录相关日志（ssh/sudo等）
+    - /var/log/cron.d：cron定时计划任务的执行日志
+    - /var/log/audit：安全审计日志的目录
+16）/run：临时存储系统启动以来的信息（重启清空）
+17）/tmp：临时存放文件的目录
+18）/opt：可选（Optional）目录
+
+6. 不常用的命令（持续更新...）
+1）PulseAudio：
+    - pacmd：在运行时重新配置PulseAudio声音服务，如pacmd list-cards查看声卡
+    - pactl：控制正在运行的PulseAudio声音服务，如pactl list sources查看声卡信源
