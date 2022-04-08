@@ -73,3 +73,16 @@
 2）cmd模块
     - salt '*' cmd.run 'ls -l'：实现远程命令执行
     - salt '*' cmd.script 'xxx.sh'：实现SHELL脚本执行
+
+7. SaltStack自定义模块
+1）/srv/salt/_modules下编写自定义模块
+    - 自定义模块是python脚本
+    - 脚本内设置（def __virtual__():/__virtualname__）可更改模块名，此时.py脚本文件名作为模块名不可用
+    - 可交叉调用salt自带模块（return __salt__['cmd.run']('ls -l')）
+    - 无# -*- encoding: utf-8 -*-时中文注释会导致模块找不到
+2）自定义模块同步并推送到Minion
+    - salt '*' saltutil.sync_modules
+    - Minion中模块存放路径：/var/cache/salt/minion/extmods/modules
+3）使用自定义模块
+    - salt '*' mytest.func
+    - mytest（即mytest.py）为模块名，func为其中方法（def func():）
