@@ -125,3 +125,38 @@
 1）PulseAudio：
     - pacmd：在运行时重新配置PulseAudio声音服务，如pacmd list-cards查看声卡
     - pactl：控制正在运行的PulseAudio声音服务，如pactl list sources查看声卡信源
+
+7. Linux开源代码编译安装
+1）configure（配置）：./configure --prefix=软件安装路径，检测依赖的外部环境
+2）make（编译）：根据生成的Makefile编译规范进行gcc 、ld等操作
+3）make install（安装）：安装到系统上
+
+8. Makefile
+1）Make根据Makefile，以各源文件构建一个ELF文件（如.out/.so）
+2）Makefile：
+    - 目标：放在:前
+        - make Tag1，编译目标Tag1（目标可定义多个）
+        - make，不指定目标，则是默认第一个目标
+        - 假目标：.PHONY: Tag1，声明后该目标名不会被当成文件来处理
+        - 目标可依赖，被依赖
+    - 依赖：Tag1 : Tag2，Tag1依赖Tag2，所以Tag2先构建
+    - 命令：
+        - @命令不显示在make输出中
+        - 变量：
+            - 变量声明：xxx = value
+            - 变量调用：$(xxx)/${xxx}
+            - 自动变量：
+                - $@：表示该规则的目标
+                - $^：表示该规则的所有依赖
+                - $<：表示该规则的第一个依赖
+                - echo输出$：\$$，额外的\由于shell规则，$由于Makefile规则
+            - 特殊变量：
+                - MAKE：表示make命令名
+                - MAKECMDGOALS：表示make编译的目标
+            - 扩展变量：
+                - = 调用时赋值，x = a;xx = $(x)+b;x = c // c+b
+                - := 直接赋值，x := a;xx := $(x)+b;x := c // a+b
+                - ?= 条件赋值，x = a;x ?= b;xx ?= b // x = a, xx = b
+                - += 增赋值，x = a;x += b // x = a b
+            - override：防止Makefile中定义的变量被覆盖
+    - 规则：规则 = 目标 + 依赖 + 命令

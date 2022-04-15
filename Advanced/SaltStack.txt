@@ -66,6 +66,9 @@
         pkg:
           - installed
     - 安装（- installed，函数定义）httpd（httpd，标签定义）包（pkg，状态定义）
+5）执行：
+    - 将xxx.sls放入指定目录下（/etc/salt/master中file_roots，一般为/srv/salt）
+    - salt '*' state.sls xxx
 
 6. SaltStack常用模块
 1）test模块
@@ -84,5 +87,5 @@
     - salt '*' saltutil.sync_modules
     - Minion中模块存放路径：/var/cache/salt/minion/extmods/modules
 3）使用自定义模块
-    - salt '*' mytest.func
-    - mytest（即mytest.py）为模块名，func为其中方法（def func():）
+    - salt '*' mytest.func xxx
+    - mytest（即mytest.py）为模块名，func为其中方法（def func(x):），xxx为func参数x
