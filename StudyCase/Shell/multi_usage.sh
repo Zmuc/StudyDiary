@@ -91,7 +91,7 @@ function show_help {
 
 # 版本信息
 function show_info {
-	echo -e "multi_usage v1.0\n"
+	echo -e "Multi Usage v1.0\n"
 	echo "集成了许多小功能"
 }
 
@@ -100,21 +100,21 @@ function show_info {
 while getopts "x:hv" OPT;
 do
 	case $OPT in
-		h)
-			show_help
-			break
-			;;
-		v)
-			show_info
-			break
-			;;
+        h)
+            show_help
+            break
+            ;;
+        v)
+            show_info
+            break
+            ;;
         x)
-			select_func $OPTARG
-			break
-			;;
+            select_func $OPTARG
+            break
+            ;;
         *)
             show_help
-			break
-			;;
+            break
+            ;;
     esac
 done

@@ -42,7 +42,7 @@ function show_help {
 
 # 版本信息
 function show_info {
-	echo -e "deb-compress-tool v1.0\n"
+	echo -e "Deb Compress Tool v1.0\n"
 	echo "适用于debian deb包快速压缩解压"
 }
 
