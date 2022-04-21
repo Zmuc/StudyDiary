@@ -158,5 +158,13 @@
                 - := 直接赋值，x := a;xx := $(x)+b;x := c // a+b
                 - ?= 条件赋值，x = a;x ?= b;xx ?= b // x = a, xx = b
                 - += 增赋值，x = a;x += b // x = a b
-            - override：防止Makefile中定义的变量被覆盖
     - 规则：规则 = 目标 + 依赖 + 命令
+    - override：防止Makefile中定义的变量被覆盖
+    - 模式：%.c即通配所有.c文件，用同一模式规则实现
+    - 函数：
+        - addprefix：$(addprefix prefix, text)，给text字符串加上前缀prefix
+        - filter：$(filter pattern1 pattern2, text)，在text字符串中过滤出符合pattern1/pattern2模式的字符串
+        - filter-out：$(filter-out pattern1 pattern2, text)，在text字符串过滤出不符合pattern1/pattern2模式的字符串
+        - patsubst：$(patsubst pattern, replacement, text)，在text字符串中，将pattern替换为replacement
+        - strip：$(strip text)，去掉text字符串中多余的空格
+        - wildcard：$(wildcard pattern)，支持以*作为通配符

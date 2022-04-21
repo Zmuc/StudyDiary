@@ -106,5 +106,35 @@ nullptr为了替代NULL，类型为nullptr_t，用来区分空指针和0
 		// ...
 	}；
 
+7. Lambda表达式
+1）Lambda表达式提供了类似匿名函数的特性
+2）基本语法：[ caputrue ] ( params ) opt -> ret { func; };
+	- [ caputrue ]：捕获列表，精细控制了Lambda表达式访问及如何访问外部变量
+		- []：不捕获任何变量
+		- [&]：捕获外部作用域中所有变量，作为引用在函数体中使用
+		- [=]：捕获外部作用域中所有变量，作为值/副本（变量可拷贝，且在Lambda创建时拷贝）在函数体中使用
+		- [this]：捕获当前类this指针，具有当前类成员函数同样的访问权限，可使用当前类成员函数/成员变量（使用&/=时默认添加此选项）
+		- [xxx]：按值捕获xxx变量，且不捕获其他变量
+		- [=, &xxx]：默认按值捕获外部作用域中所有变量，且按引用捕获xxx变量
+	- ( params )：参数表，选填
+	- opt：函数选项，选填
+		- mutable：函数体代码可以修改被捕获的变量，且可访问被捕获对象的non-const方法（被mutable修饰的Lambda表达式必填参数表，可以为NULL）
+		- exception：是否抛出异常及何种异常
+		- attribute：声明属性
+	- ret：函数返回值类型（拖尾返回类型），选填
+	- { func; }：函数体
+3）原理：定义Lambda表达式后，编译器会自动生成匿名类（闭包类型，重载了()运算符）
+4）注意事项：
+	- 闭包类型禁用了赋值操作符，所以Lambda表达式不能赋值
+	- 闭包类型允许复制构造函数，所以可用Lambda表达式生成副本
+	- 按引用捕获可能会导致悬挂引用（Dangling references），因为引用捕获不会延长引用变量的生命周期（Lambda表达式所在函数形参临时，调用后即销毁）
+	- 按值捕获（非=）私有成员变量会导致无法编译
 
-
+8. 新增容器
+1）std::array：保存在栈内存中（std::vector保存在堆内存中）
+2）std::forward_list：单向链表实现的列表容器（std::list是双向链表实现），提供了O(1)复杂度的元素插入，不支持快速随机访问，不支持size()
+3）std::tuple：元组，不包含任何结构，可返回多个值
+	- std::make_tuple: 构造元组
+	- std::get: 获得元组某个位置的值
+	- std::tie: 元组拆包
+4）无序容器：std::unordered_map/std::unordered_multimap/std::unordered_set/std::unordered_multiset
