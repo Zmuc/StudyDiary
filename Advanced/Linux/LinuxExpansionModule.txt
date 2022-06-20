@@ -27,3 +27,136 @@
     - 举例：password    requisite    pam_cracklib.so retry=3
 8）常用PAM模块：
     - pam_pwquality.so：
+
+3. SELinux
+1）SELinux（Security Enhanced Linux）是强制访问控制（MAC）的内核模块/安全子系统，最大限度地减小系统中服务进程可访问的资源（最小权限原则）
+2）SELinux主要概念：
+    - 主体Subject：进程
+    - 客体Object：文件、端口、设备等
+    - 策略Policy：/etc/sysconfig/selinux：SELINUXTYPE=targeted|minimum|strict|default|mls
+        - Linux发行版策略：
+            - targeted：CentOS默认策略，只对网络服务进程保护
+            - minimum：CentOS策略，修改过的targeted，对其部分网络服务进程保护
+            - strict：CentOS策略（CentOS 5启用，现已废除），严格对所有进程保护
+            - default：Ubantu默认策略
+            - mls：多级安全保护策略，复杂且限制更严格
+        - 自定义策略（自定义生成类似发行版策略的Policy包）：
+            - .te（Type Enforcement）：私有策略文件，主要是类型强制规则
+            - .if（Interface File）：外部接口文件，可用于其他模块
+            - .fc（File Context）：文件安全上下文/标签文件，定义模块文件的安全上下文
+            - .spt（Support）：策略支持宏，如许可集合等
+            - .pp：由上述源文件编译成的策略模块
+            - policy.x：由.pp链接而成的策略文件（x为版本号，出于兼容性考虑）
+    - 安全上下文：访问控制属性，也称标签
+        - 安全上下文分进程安全上下文和文件安全上下文
+            - 文件安全上下文：
+                - rpm包安装文件：根据rpm包内记录生成
+                - 手动创建文件：根据当前策略（SELINUXTYPE）生成
+                - cp文件：重新生成
+                - mv文件：不变
+                - 运行程序：根据PAM的pam_selinux.so模块设置生成
+        - 安全上下文格式：USER:ROLE:TYPE:LEVEL[:SENSITIVITY:CATEGORY]
+            - 用户USER：
+                - user_u ：普通用户登录系统后的预设
+                - system_u ：开机过程中系统进程的预设
+                - root ：root登录系统后的预设
+            - 角色ROLE：
+                - object_r：文件、目录和设备等
+                - system_r：系统程序
+            - 类型TYPE：
+                - 将主体和客体划分为不同的组，给每个组定义了一个类型，为进程运行提供最低的环境权限（决定访问权）
+                - 当某主体类型和执行中的进程关联时，也称呼为域domain
+            - 安全级别LEVEL：mls策略
+                - 敏感度SENSITIVITY：敏感性声明，最低s0（默认）
+                - 类别CATEGORY（可选）：无序且不相关的列表，c1，c3无序/c1.c3有序（c1 - c2 - c3）
+    - 策略机制：
+        - 类型强制（TE，Type Enforcement）
+            - 类型规则
+                - 类型type：SELinux无预定义类型，必须在使用前声明
+                    - type a_t; // 声明a_t类型
+                - 属性attribute：表示一组类型
+                    - attribute a; // 声明a属性
+                - 关联typeattribute：关联类型和属性
+                    - type a_t, a; // 声明a_t类型并关联a属性
+                    - typeattribute a_t a1, a2; // a1，a2属性关联已声明a_t类型
+                - 别名typealias：类型更改后的兼容性考虑
+                    - type a_t alias aa_t, a; // 声明a_t类型并取别名aa_t，关联a属性
+                    - typealias a_t alias aa_t; // aa_t作为已声明a_t类型的别名
+            - 访问向量（AV，Access Vector）规则
+                - AV规则格式：rule source_type target_type:class per_set
+                - rule规则：
+                    - allow：允许主体对客体执行操作
+                    - auditallow：允许主体对客体执行操作，且记录信息
+                    - neverallow： 不允许主体对客体执行操作
+                    - dontaudit：不记录违反规则的信息
+                - source_type：主体类型
+                - target_type：客体类型
+                - class：客体类别
+                - per_set：许可
+                - 举例：allow a_t b_t : file {read execute}; // 允许主体类型a_t对客体类型b_t的文件进行读和执行
+        - 基于角色的访问控制（RBAC，Roles Based AccessControl）
+            - 用户-角色：限定用户的角色
+                - user a_u roles {a1_r a2_r ...}
+            - 角色-类型：限定角色的类型
+                - role a_r types {a1_t a2_t ...}
+3）SELinux工作模式：/etc/sysconfig/selinux：SELINUX=enforcing|permissive|disabled
+    - enforcing：阻止违反SELinux规则的行为，且记录信息
+    - permissive：不阻止违反SELinux规则的行为，只记录信息
+    - disabled：关闭SELinux
+4）SELinux运作机制：
+    - 1. 某进程p为主体，其类型t1（安全上下文u:r:t1:s0）
+    - 2. 某文件/path/f为客体，其类型t2（安全上下文u:r:t2:s0）
+    - 3. 主体对客体进行read和write操作
+    - 4. 主体通过SELinux服务器读取策略文件（policy.x），获得相关规则：allow t1 t2: file {read execute}
+    - 5. 主体对客体，read成功，write失败
+    - 6. 经访问向量缓存（AVC，Access Vector Cache）生成失败信息，写入/var/log/audit/audit.log（依赖auditd）
+    - 7. 失败信息：type=AVC msg=audit(x): avc: denied { write } for pid=473 comm="p" path="/path/f" scontext=u:r:t1:s0 tcontext=u:r:t2:s0 tclass=file permissive=1
+5）其他：
+    - SEBOOL：通过设置布尔值sebool（on|off，1|0），来禁止SELinux服务（服务开启状态决定某些AV规则是否生效）
+    - SEPORT：无法通过修改服务配置文件来更改端口，只能用过特定语句来允许服务对端口的权限
+    - SELinux内核CONFIG：
+        - CONFIG_SECURITY_SELINUX：SELinux支持
+        - CONFIG_SECURITY_SELINUX_BOOTPARAM：SELinux内核引导参数支持，selinux=0禁用/selinux=1启用
+        - CONFIG_SECURITY_SELINUX_BOOTPARAM_VALUE：SELinux内核引导参数的默认值
+        - CONFIG_SECURITY_SELINUX_DISABLE：运行时禁用SELinux支持
+        - CONFIG_SECURITY_SELINUX_DEVELOP：SELinux开发支持，除非在内核引导参数指定enforcing=1，强制内核以permissive模式运行
+    - SELinux用户态git仓：
+        - selinux：SELinux核心
+            - libselinux：SELinux基础环境
+            - libsemanage：SELinux策略管理
+            - libsepol：SELinux二进制策略处理
+            - checkpolicy：SELinux策略编译器，生成二进制策略（policy.x）
+            - secilc：SELinux CIL编译器，将CIL语言编译成二进制策略
+            - selinux-utils：SELinux基础工具
+            - policycoreutils：SELinux策略核心工具
+            - restorecond：SELinux策略刷新工具
+            - mcstrans：SELinux mls安全级别翻译工具
+        - refpolicy：SELinux策略
+        - setools：SELinux策略分析工具，如seinfo，sesearch等
+6）常用命令：
+    - getenforce：查看SELinux状态
+    - setenforce 0|1：切换SELinux状态
+        - 0：permissive
+        - 1：enforcing
+    - sestatus -v：SELinux详细报告
+    - ls -Z：显示文件（客体）安全上下文
+    - ps -Z：显示进程（主体）安全上下文
+    - chcon -t public_content_t /mnt/mytest：修改/mnt/mytest的安全上下文为public_content_t（临时）
+    - semanage fcontext -l：查看已设定的所有安全上下文
+    - semanage fcontext -a -t public_content_t '/mnt/newtest(/.*)?'：在/mnt目录下新增newtest目录并修改其安全上下文为public_content_t
+        - a：新增
+    - semanage port -a -t http_port_t -p tcp xxx：将xxx端口加入http端口中
+        - a：新增
+        - t：目标的类型标识符
+        - p：指定端口协议或Internet协议
+    - restorecon：刷新安全上下文
+        - F：强制重置安全上下文
+        - v：显示安全上下文更改过程
+        - R：递归更改文件/目录的安全上下文
+    - getsebool -a：显示所有的sebool
+    - setsebool -P ftp_home_dir on：将ftp_home_dir --> off修改为开启，即允许认证用户可以读写自己的主目录中的文件（ftp_home_dir）
+        - P：直接将修改写入配置文件
+    - touch /.autorelabel：该文件存在时重启系统会重新标签
+    - seinfo -t：查看所有声明
+        - t：查看类型声明
+    - sesearch --allow -t a_t：查看a_t类型相关的所有allow规则

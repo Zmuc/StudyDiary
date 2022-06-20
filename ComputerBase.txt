@@ -1,0 +1,86 @@
+1. 存储体系
+1）存储介质：
+    -主存储器：
+        - 随机访问存储器（RAM，Random Access Memory）：随时读写，速度快，具有易失性
+            - 静态随机存取存储器（SRAM，Static RAM）：通电状态下，存储数据保持恒久（体积/功耗大）
+            - 动态随机存取存储器（DRAM，Dynamic RAM）：存储数据保持时间短，需要不断刷新
+                - 同步动态随机存取内存（SDRAM，Synchronous DRAM）：使用单一系统时钟同步所有的地址数据和控制信号
+                    - 双倍速率同步动态随机存储器（DDR SDRAM，Double Data Rate SDRAM/简称DDR）：一个时钟周期内传输两次次数据
+                    - DDR2（Double Data Rate 2）：数据传输速率约为2倍DDR
+                    - DDR3（Double Data Rate 3）：数据传输速率为2倍DDR2
+            - 铁电随机存取存储器（FRAM，Ferroelectric RAM）：电容使用介电常数很大的铁电材料，具有非易失性
+        - 只读存储器（ROM，Read Only Memory）：只读，数据稳定，具有非易失性
+            - 可编程只读存储器（PROM，Programmable ROM）：只能编程一次
+            - 可擦除可编程只读存储器（EPROM，Erasable Programmable ROM）：可重复擦除编程
+            - 电可擦除可编程只读存储器（EEPROM，Electrically Erasable Programmable ROM）：即插即用，掉电后数据不丢失
+            - 闪存（Flash，Flash EEPROM Memory）
+                - Nor Flash：芯片内执行（XIP, eXecute In Place），适合小容量
+                - Nand Flash：容量较大，改写速度快
+        - CMOS存储器（CMOS，Complementary Metal Oxide Semiconductor）：低耗电，主要用来存放BIOS中设置信息及系统时间日期
+    - 辅助存储器：
+        - 磁盘
+            - 软盘（Floppy Disk）：移动存储介质，通过软盘驱动器完成，速度慢，容量小，已被U盘淘汰
+            - 硬盘/温彻斯特式硬盘（HDD，Hard Disk Drive）：容量大，断电后数据保存
+                - 机械硬盘/传统硬盘（HDD，Hard Disk Drive）：磁性碟片存储
+                - 固态硬盘（SSD，Solid State Drive）：固态电子存储芯片阵列（闪存颗粒存储）
+                - 混合硬盘（HHD，Hybrid Hard Disk）：综合HDD和SSD
+        - 光学存储
+            - 光盘（CD，Compact Disc）
+                - 只读光盘（CD-ROM，CD Read-Only Memor）：只读，数据永久存储
+                - 可刻录光盘（CD-R，CD Recordable）：一次写入，数据永久存储
+                - 可擦写光盘（CD-RW，CD Rewritable）：可重写多次
+            - 影音光盘（VCD，Video CD）：本质上还是CD
+            - 数字视频/通用光盘（DVD，Digital Video/Versatile Disc）：增强VCD
+            - 蓝光光盘（BD，Blu-ray Disc）：比DVD更高容量的数据存储（波长为405nm的蓝紫色激光读写）
+            - M光盘（M-DISC，Millennial Disc）：使用寿命极长
+        - 闪存：
+            - U盘/USB闪存盘（UFD，Universal Serial Bus/USB Flash Disk）：集磁盘存储技术，闪存技术，通用串行总线技术一体，即插即用，不需要物理驱动器
+            - 记忆棒（Memory Stick）：适用于Sony产品
+    - 缓冲存储器：
+        - 高速缓冲存储器（Cache）：高速缓冲（缓冲行Cache Line，固定大小的数据块），为解决CPU和主存之间速度不匹配（加快程序执行）
+    - 寄存器：存储二进制代码（由N个触发器组成，1触发器对应1位二进制）
+        - 通用寄存器：
+            - AX(Accumulator，AH、AL)：累加寄存器
+            - BX(Base，BH、BL)：基址寄存器
+            - CX(Count，CH、CL)：计数寄存器
+            - DX(Data，DH、DL)：数据寄存器
+        - 指针/变址寄存器：
+            - BP（Base Pointer）：基址指针寄存器
+            - SP（Stack Pointer）：堆栈指针寄存器
+            - SI（Source Index）：源变址寄存器
+            - DI（Destination Index）：目的变址寄存器
+        - 段寄存器：
+            - CS（Code Segment）：代码段寄存器
+            - DS（Data Segment）：数据段寄存器
+            - SS（Stack Segment）：堆栈段寄存器
+            - ES（Extra Segment）：附加段寄存器
+        - IP（Instruction Pointer）：指令指针寄存器，下一条要执行的指令地址
+        - FR（Flags Register）：标志寄存器
+2）存储速度
+    - 离CPU越近的存储器，速度越快，容量越小，每字节的成本越高
+    - 读取速度：寄存器 -> 缓存/缓冲存储（L1 -> L2 -> L3） -> 内存/主存储器 -> 外存/辅助存储器
+
+
+2. 总线与接口
+1）总线（Bus）是计算机各种功能部件之间传送信息的公共通信干线
+2）总线分类：
+    - 以功能划分：
+        - 系统总线：
+            - 数据总线（Data Bus）：在CPU与RAM间传输数据
+            - 地址总线（Address Bus）：传输RAM中储存数据的地址
+            - 控制总线（Control Bus）：传输微处理器控制单元（Control Unit）的控制信号
+        - 其他：
+            - 扩展总线（Expansion Bus）：在外部设备和计算机主机间传输数据
+            - 局部总线（Local Bus）：更高速的数据传输
+    - 以传输方式划分：
+        - 串行总线（Serial Bus）：二进制数据逐位通过1个数据线传输
+        - 并行总线：数据线通常>=2
+    - 以时钟独立划分：
+        - 同步总线：时钟信号独立于数据（统一）
+        - 异步总线：时钟信号从数据中提取
+3）重要总线介绍：
+    - 工业标准结构（ISA，Industry Standard Architecture）：已被淘汰
+    - 串行外设接口（SPI，Serial Peripheral Interface）：同步串行通行，4线高速全双工，用于EEPROM，FLASH，实时时钟，AD转换器...
+    - 内部集成电路（I2C，Inter-Integrated Circuit）：同步串行通信，双向2线，用于集成电路（ICs）间
+    - 通用串行总线（USB，Universal Serial Bus）：异步串行通信，连接外部设备的总线标准，如鼠标，键盘...
+    - 外设组件互连（PCI，Peripheral Component Interconnect）：同步并行通信，连接外部设备的总线标准，如显卡，声卡，网卡...
