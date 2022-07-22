@@ -1,12 +1,15 @@
 1. ACL
 1）ACL（Access Control Lists，访问控制列表）
-2）根据设定的条件（源地址、目的地址、端口号等）对接口上的数据包进行过滤，允许其通过或丢弃
-3）作用：
-    - 控制用户对网络的访问
-    - 限制网络流量，从而提高网络性能
-    - 简化路由更新信息的长度，从而限制通过路由器某一网段的通信流量
-    - 网络安全访问
-    - 路由器端口处决定哪种类型的通信流量被转发/阻塞
+2）对单一用户设定访问文件的权限
+3）命令：
+    - getfacl：查看文件/目录设定的ACL权限
+    - setfacl：设置用户/群组对指定文件的访问权限
+        - setfacl -m u:userA:rx /fileB：userA用户对/fileB文件有rx权限
+        - setfacl -m d:g:groupA:rwx /dirB：groupA群组对/dirB目录新建文件有rwx权限（默认）
+        - setfacl -m u:userA:rx -R /dirB：userA用户对/dirB目录下所有文件（递归）有rx权限
+        - setfacl -x u:userA /fileB：删除userA用户对/fileB文件的ACL权限
+        - setfacl -b /fileB：清空/fileB文件所有的ACL权限
+        - setfacl -k：删除默认
 
 2. Linux-PAM
 1）PAM（Pluggable Authentication Modules，可插拔认证模块）
@@ -26,7 +29,50 @@
 7）配置：模块类型 控制标记 模块路径 模块参数
     - 举例：password    requisite    pam_cracklib.so retry=3
 8）常用PAM模块：
-    - pam_pwquality.so：
+    - pam_access[auth|account|password|session]：日志式登录访问控制
+    - pam_cracklib[password]：根据字典单词检查密码
+    - pam_debug[auth|account|password|session]：调试PAM堆栈
+    - pam_deny[auth|account|password|session]：锁定/拒绝访问
+    - pam_echo[auth|account|password|session]：打印文本信息
+    - pam_exec[auth|account|password|session]：调用外部命令
+    - pam_env[auth|account|password|session]：设置/取消设置环境变量
+    - pam_ftp[auth]：匿名/ftp访问
+    - pam_faildelay[auth]：设置应用程序失败时的延迟
+    - pam_filter[auth|account|password|session]：过滤器，提供对用户和应用程序（tty，stdin/stdout）间输入/输出访问
+    - pam_group[auth]：（用户）组访问
+    - pam_issue[auth]：将问题文件添加到用户提示符
+    - pam_keyinit[session]：核心会话密钥环初始化器
+    - pam_mail[auth|session]：通知可用/新邮件
+    - pam_mkhomedir[session]：创建用户主目录
+    - pam_motd[session]：显示motd文件
+    - pam_localuser[auth|account|password|session]：在/etc/passwd中列出用户
+    - pam_loginuid[session]：将用户的loginuid记录到进程属性
+    - pam_lastlog[auth|account|session]：显示上次登录日期并执行inactive
+    - pam_limits[session]：限制资源（/etc/security/limits*）
+    - pam_listfile[auth|account|password|session]：基于任意文件拒绝/允许服务
+    - pam_namespace[session]：为会话配置命名空间
+    - pam_nologin[auth|account]：阻止非root用户登录
+    - pam_permit[auth|account|password|session]：始终允许访问（nobody）
+    - pam_pwhistory[password]：记住最近的密码（防止用户频繁更改为此密码）
+    - pam_pwquality[password]：密码质量检查（替代pam_cracklib）
+    - pam_rootok[auth]：获得root访问权限（用户UID=0，则进行身份验证）
+    - PAM_rhosts[auth]：标准网络身份验证（从远程主机连接的远程用户）
+    - pam_succeed_if[auth|account|password|session]：测试帐户特征
+    - pam_selinux[session]：SELinux默认安全上下文
+    - pam_securetty[auth|account|password|session]：将root登录限制为特殊设备（安全tty，/etc/securetty）
+    - pam_sepermit[auth|account]：SELinux强制模式时，根据/etc/security/sepermit.conf拒绝/允许用户登录
+    - pam_shells[auth|account]：用户shell在/etc/shell中列出时才允许登录
+    - pam_tally[auth|account]：登录计数（失败计数，成功重置），失败过多拒绝访问
+    - pam_tally2[auth|account]：登录计数（失败计数，成功重置），失败过多拒绝访问（有自动解锁功能）
+    - pam_time[account]：通过时间控制访问（/etc/security/time.conf）
+    - pam_timestamp[auth|session]：使用缓存的身份验证（成功）进行身份验证（一定时间内）
+    - pam_tty_audit[session]：为指定用户启用/禁用tty audit审计
+    - pam_umask[session]：设置文件模式创建掩码（默认权限）
+    - pam_unix[auth|account|password|session]：传统密码进行身份验证（/etc/passwd，/etc/shadow）
+    - pam_userdb[auth|account]：根据db数据库进行身份验证
+    - pam_wheel[auth|account]：仅wheel组成员允许root访问权限
+    - pam_warn[auth|account|password|session]：记录（syslog）所有PAM项目
+    - pam_xauth[session]：用户间转发xauth密钥（cookie）
 
 3. SELinux
 1）SELinux（Security Enhanced Linux）是强制访问控制（MAC）的内核模块/安全子系统，最大限度地减小系统中服务进程可访问的资源（最小权限原则）
