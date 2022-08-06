@@ -101,6 +101,27 @@
     - /etc/audit/auditd.conf：安全审计配置文件
     - /etc/audit/audit.rules：审计规则文件
 6）/dev：外部设备（Device）目录
+    - /dev/hda1（b）：IDE（Integrated Drive Electronics，电子集成驱动器）设备
+        - a1：第1个设备（a）的第1分区
+    - /dev/sda1（b）：SCSI（Small Computer System Interface，小型计算机系统接口）设备
+    - /dev/mmcblk0p7（b）：MMC（MultiMedia Card，多媒体记忆卡）设备
+        - blk0：块设备，序号0
+        - p7：该块设备第7分区
+    - /dev/loop1（b）：本地回环设备
+    - /dev/ram1（b）：内存
+    - /dev/fd：标准软驱（fd -> /proc/self/fd）
+        - stdin -> /proc/self/fd/0
+        - stdout -> /proc/self/fd/1
+        - stderr -> /proc/self/fd/2
+    - /dev/md：软raid（Redundant Array of Independent Disks，独立磁盘冗余阵列）设备
+    - /dev/null（c）：无限数据接收设备
+    - /dev/zero（c）：无限零资源设备
+    - /dev/tty1（c）：虚拟终端
+    - /dev/ttyS1（c）：串口
+    - /dev/lp1（c）：并口
+    - /dev/console（c）：控制台
+    - /dev/fb0（c）：FrameBuffer（屏幕每个点映射成一段线性内存空间）
+    - /dev/random/urandom（c）：随机数设备
 7）/proc：进程（Processes）目录（/proc是伪文件系统，即虚拟文件系统，是系统内存的映射）
 8）/root：超级用户（系统管理员root）目录
 9）/home：普通用户主目录，每个用户在其下拥有单独子目录（子目录名即用户名）
@@ -193,7 +214,6 @@
     - sysfs：基于内存的虚拟文件系统，用来管理/proc
     - tmpfs：基于内存的虚拟文件系统，用来管理/tmp，也可用于swap交换空间
     - NFS（Network File System）：用来实现不同主机间文件共享的一种网络服务（通过挂载使用远程共享的资源）
-
 
 10. Linux内存管理
 1）内存（Memory）也称主存储器，用于暂时存放CPU运算的数据，也与外存（辅助存储器）数据交互
@@ -339,3 +359,38 @@
 2）异常处理：
     - syslog是Linux中的系统日志管理服务（守护进程syslogd）
     - 守护进程出错由日志服务（如syslog）将其错误信息输出到系统日志文件（如/var/log/messages）中
+
+14. 中断
+1）CPU因中断请求（内外部或预先安排的事件）暂停正在运行的程序，转而处理中断服务程序（处理完返回被中断的程序）
+    - 中断请求：IRQ，Interrupt ReQuest
+    - 中断服务程序：ISR，Interrupt Service Routines
+        - 不可传参
+        - 无返回值
+        - 无重入或性能问题（如无printf()函数）
+2）中断向量表（IVT，Interrupt Vector Table）
+    - CPU对应每个外设资源的中断服务程序入口
+    - 中断向量：中断服务程序的入口地址/存放首地址，4字节
+3）中断上下文：硬件传递的参数和内核需保存的环境（被中断的进程环境）
+    - 中断服务程序使用内核栈，执行应快速简短
+    - 中断时不允许睡眠，阻塞：
+        - 不能进程切换（无进程概念，只能被更高优先级的中断打断）
+        - 不能schedule()（中断上下文没有task_struct，保存的被中断的进程上下文会因此改变）
+        - 内核不可抢占（睡眠则内核挂起）
+4）中断类型：
+    - 内部中断/同步中断（异常，软件中断）：指令执行完成后（中断请求与代码指令同步执行）才能中断
+    - 外部中断/异步中断（硬件中断）：指令执行期间可中断
+5）中断top/bottom半部：
+    - top（上半部）：紧急任务，响应速度快，硬件相关且不被其他中断打断
+    - bottom（下半部）：非紧急任务
+        - 软中断：运行在中断上下文，可延迟函数，将时间不敏感任务延迟
+            - 静态创建，产生后等待内核调度
+            - 不能被自己打断，只能被硬件中断打断
+            - 并发运行多个CPU（可重入，可能冲突）
+        - tasklet：基于软中断，无差别的队列机制
+            - 有中断才执行
+            - 无类型数量限制（软中断轮询，所以设置了类型数量限制）
+            - 同种中断在一个CPU上执行
+            - 支持SMP（Share Memory Processor）
+        - 工作队列：运行在进程上下文，将工作给中断守护线程（内核线程）
+            - 不同进程间切换，完成不同工作
+            - 有中断才执行

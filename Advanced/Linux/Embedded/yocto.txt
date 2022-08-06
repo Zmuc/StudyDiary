@@ -1,0 +1,81 @@
+1. Yocto
+1）Yocto：https://git.yoctoproject.org/
+2）Yocto Project组成：
+    - 嵌入式Linux的集成工具（自动构建测试，板级支持，定制化组件信息等）
+    - 嵌入式发行版参考Poky（基于BitBake构建引擎/OpenEmbedded-Core核心构建系统元数据）
+    - OpenEmbedded构建系统（OpenEmbedded Project共同维护）
+3）Yocto层（Layer）模型：
+    - meta-*：将Metadata按层级分类（meta，Poky提供）
+        - recipes-*：更详细分类的层级（meta/recipes-core）
+            - 包名：具体某个包（meta/recipes-core/systemd）
+4）Yocto元数据集（Metadata）：
+    - 配方（Recipes）：包名_版本号.bb，记录该包源码，补丁，配置选项等
+        - .bb：单包的配方信息（x_1.bb，即bitbake x）
+        - .bbappend：对应.bb文件的附加配方信息（x_1.bbappend对应x_1.bb）
+        - .inc：单包多配方的共享配方信息（x_1.bb，x-2_1.bb共享x.inc）
+    - 类（Class）：meta-*/classes/*.bbclass
+        - .bbclass：部分.bb文件的共享信息
+    - 配置（Configuration）
+        - .conf：构建过程配置变量（机器环境，发行配置，编译选项...）
+            - bblayers.conf：层相关
+            - local.conf：机器环境/发行配置
+5）BitBake构建引擎：解析和执行各种数据文件（bash/python），开始构建
+    - 工作流：
+        - .bb文件解析
+        - do_fetch：获取源码（SRC_URI）
+        - do_unpack：解压源码
+        - do_patch：打补丁（*.patch）
+        - do_configure：配置源码编译选项（configure）
+        - do_compile：源码编译（make）
+        - do_install：将编译产物放入目标目录（make install）
+        - do_package：将目标产物打包（PACKAGES + FILES）
+    - 工作目录：
+        - build/conf：编译配置（只影响该次编译）
+        - tmp/work：临时编译目录（一般命名）
+            - tmp/work/aarch64-*-linux/*：arm64架构，单个软件编译目录（systemd，busybox等）
+                - 包名：处理后的源码（${S}，打补丁，编译等）
+                - image：单包编译的目标产物（${D}，/etc/*，/usr/*等）
+                - temp：BitBake工作流分阶段的脚本（run.*）和日志（log.*）
+                - packages-split：按包分类目标产物
+                - deploy-*：打包产物（.rpm/.ipk/.deb）
+                - *sysroot*：依赖相关
+                - build：构建相关
+        - tmp/deploy/*：用于烧录/部署的image产物（kernel，rootfs等）
+6）配方语法：
+    - 函数：
+        - do_install_prepend(){...}
+            - do_install前置处理
+        - do_install_append(){...}
+            - do_install追加处理
+        - ${@bb.utils.contains('DISTRO_FEATURES', 'x', '--with-x', '--without-x', d)}
+            - 判断DISTRO_FEATURES中是否有x，true返回第3参数（--with-x），false返回第4参数（--without-x）
+        - ${@bb.utils.filter('DISTRO_FEATURES', 'x', d)}
+            - 判断DISTRO_FEATURES中是否有x，返回true或false
+    - 变量：
+        - SUMMARY/DESCRIPTION：摘要/描述信息
+        - HOMEPAGE：软件包官网主页
+        - LICENSE：license
+        - LIC_FILES_CHKSUM：license文本的校验和（MD5或SHA256）
+        - SRC_URI：源文件列表（file/git://），包含补丁文件
+        - SRC_URI[md5sum]/SRC_URI[sha256sum]：引用文件中源码包的校验和
+        - PN：包名（Package Name），即.bb文件名中的包名
+        - PROVIDES：可检索到的包别名
+        - PV：包版本（Package Version），即.bb文件名中的版本号
+        - PR：包修订版本
+        - WORKDIR：${TMPDIR}/work/${MULTIMACH_TARGET_SYS}/${PN}/${EXTENDPE}${PV}-${PR}（一般地，${TMPDIR}=tmp，${EXTENDPE}可无）
+        - S：${WORKDIR}/${PN}-${PV}，处理后的源码
+        - D：${WORKDIR}/image，目标产物
+        - DEPENDS：构建依赖
+        - RDEPENDS：运行依赖
+        - EXTRA_OECONF：编译过程configure的参数
+        - PACKAGECONFIG：feature选项配置
+            - PACKAGECONFIG[x] ="--with-x, --without-x, bx, rx"
+                - --with-x：启用该feature，则将其添加到EXTRA_OECONF
+                - --without-x：禁用该feature，则将其添加到EXTRA_OECONF
+                - bx：启用该feature，则将其添加到DEPENDS
+                - rx：启用该feature，则将其添加到RDEPENDS
+        - PACKAGES：包列表（软件包 -> .rpm/.ipk/.deb二进制包）
+        - FILES：配合PACKAGES创建的包列表使用，将指定文件/目录放入指定包
+        - inherit：继承类
+            - SYSTEMD_SERVICE：继承systemd，SYSTEMD_SERVICE_${PN}指定systemd服务名称
+        - ALLOW_EMPTY：允许产生空包

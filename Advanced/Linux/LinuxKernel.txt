@@ -1,0 +1,208 @@
+1. 目录框架
+1）arch：区分处理器架构（硬件体系结构），子目录以处理器架构划分
+    - x86：
+        - boot：内核特定架构的代码
+        - kenrel：架构特定的代码
+        - include：特定架构的头文件（.h）
+        - lib：通用函数在特定架构的实现（.c/.S）
+        - mm：特定架构的内存管理
+        - configs：特定架构的CONFIG配置文件(xxx_defconfig)
+    - arm：
+        - boot：
+            - dts：设备树（.dts/.dtsi）
+                - .dts：描述板级信息（IIC，SPI设备等）
+                - .dtsi：描述SOC级信息（CPU数量，主频等）
+    - arm64
+    - mips
+    - powerpc
+    - ...
+2）block：块设备，实现块设备基本框架和I/O调度
+3）certs：认证，签名
+4）crypto：加密/散列（Hash）算法，压缩，CRC校验等
+5）drivers：设备驱动程序，子目录以设备类型划分
+    - block
+    - char
+    - i2c
+    - pci
+    - usb
+    - ...
+6）fs：文件系统，子目录以文件系统划分
+    - ext2/4
+    - jffs2
+    - ntfs
+    - squashfs
+    - xfs
+    - ...
+7）include：头文件（与架构无关）
+8）init：内核初始化
+    - main.c：核心文件，内核引导后运行start_kernel()（第一个函数）
+9）ipc：进程间通信
+10）kernel：内核核心
+    - power：系统启动，关闭，挂起等
+11）lib：库文件（与架构无关）
+12）mm：内存管理（与架构无关）
+13）net：网络，实现网络协议，处理网桥和DNS解析
+14）scripts：内核编译脚本
+15）security：安全（LSM，Linux Security Modules），子目录以安全模块划分
+    - selinux：SELinux（Security Enhanced Linux），提供强制访问控制（MAC）的模块（以inode为安全标签，要求文件系统支持扩展属性）
+    - apparmor：AppArmor（Application Armor），提供强制访问控制（MAC）的模块（以文件/路径名为安全标签）
+    - smack：Smack
+    - tomoyo：TOMOYO Linux
+    - ...
+16）sound：声音，ALSA、OSS音频设备的驱动核心代码和常用设备驱动
+17）tools：主机必备工具（与内核交互）
+18）usr：早期用户空间（initramfs），实现用于打包和压缩的cpio等
+19）virt：内核虚拟机KVM
+
+2. CONFIG配置/编译方法
+1）CONFIG配置：
+    - make xxx_defconfig：自动去对应目录（由make决定）检索defconfig文件，生成.config文件
+    - make menuconfig：修改内核CONFIG配置（.config）
+        - [ ]：N         # 不编译
+        - [*]：Y         # 编译进内核
+        - [M]：Module    # 编译为内核模块（不占用内存空间，可模块化安装卸载）
+    - make savedefconfig：通过.config文件生成defconfg文件
+    - cp defconfig arch/x/configs/xxx_defconfig：将修改后的defconfig保存
+2）编译方法：
+    - make：vmlinux（Virtual Memory，内核编译直接产物），Image（基于vmlinux，去掉不必要二进制码）
+    - make zImage：zImage（基于Image，包含自解压代码）
+    - make bzImage：bzImage（与zImage相同，但用于较大内核）
+    - make uImage：uImage（基于zImage，给uboot使用）
+
+3. 内核启动
+1）start_kernel()位于init/main.c，是内核启动阶段的第一个函数
+2）内核启动（start_kernel()）中的3个特殊进程：
+    - idle（PID=0）：系统创建的第一个进程（唯一未fork/kernel_thread的进程），内核启动后作为进程调度
+    - init（PID=1）：由idle进程kernel_thread创建（PPID=0），内核空间初始化后加载init程序并转换到用户空间执行
+    - kthreadd（PID=2）：由idle进程kernel_thread创建（PPID=0），负责内核线程（都是kthreadd的子进程，PPID=2）的调度管理
+3）内核启动过程（部分函数）：
+    - 内核第一个函数start_kernel，即起点
+        * start_kernel()        // 引导阶段后，内核启动阶段开始
+        --> xxx_init()          // 内核初始化，如early_security_init()，early_trace_init()，mm_init()等
+        --> rest_init()         // 内核最后的初始化，启动两个内核线程（PID=1&&PID=2）并进入死循环（PID=0）
+            --> kernel_init()           // 内核线程，即init进程（PID=1）
+                --> kernel_init_freeable()                // init初始化
+                    |--> wait_for_completion()                // 等待kthreadd线程创建
+                    |--> gfp_allowed_mask                     // 调度完成可阻塞分配
+                    |--> set_mems_allowed()                   // 可分配物理页面
+                    |--> do_pre_smp_initcalls()               // 执行所有early_initcall()定义的initcall函数
+                    |--> smp_init()                           // SMP（Symmetrical Multi-Processing）初始化
+                    |--> do_basic_setup()                     // 重要组件初始化，如驱动模型
+                        |--> do_initcalls()                       // 执行其他xxx_initcall()定义的initcall函数
+                    |--> console_on_rootfs()                  // u-boot的bootargs环境变量
+                    |--> prepare_namespace()                  // 挂载根文件系统
+                --> async_synchronize_full()              // 同步所有__init代码（阻塞过程，用以开机加速）
+                --> xxx_free_init_mem()/free_initmem()    // 释放init内存
+                --> system_state                          // 系统运行状态
+                --> run_init_process()                    // 加载init进程（切换到用户态）
+            --> kthreadd()              // 内核线程，即kthreadd进程（PID=2）
+                --> kthreadd()                       // kthreadd线程执行函数
+                    |--> set_task_comm()                 // 初始化进程描述符（kthreadd），用以子进程继承
+                    |--> set_cpus_allowed_ptr()          // 允许kthreadd在任意CPU执行
+                    |--> list_empty()                    // 判断，队列（kthread_create_list）无线程需要创建则让出CPU
+                    |--> spin_lock()                     // 队列加锁（有线程需要创建的情况）
+                    |--> list_entry()                    // 从队列中取出待创建线程信息（kthread_create_info）
+                    |--> list_del_init()                 // 删除队列已取出的元素
+                    |--> create_kthread()                // 创建线程（需先解锁队列，处理后再加锁）
+                        |--> kernel_thread()                 // 创建新线程接口
+                        |--> kthread()                       // 执行函数
+                            |--> init_completion()               // 初始化状态
+                            |--> complete()                      // 线程已创建并告知申请创建线程者
+                            |--> threadfn()                      // 线程实际执行任务
+                    |--> spin_unlock()                   // 去锁（队列所有元素处理完毕后解锁）
+        --> schedule_preempt_disabled()   // 开启内核调度且禁止抢占
+        --> cpu_startup_entry()           // 调用cpu_idle()
+            |--> cpu_idle()                   // 开启死循环（空闲时），即idle进程（PID=0）
+
+4. Security
+1）LSM（Linux安全模块框架）：
+    - LSM（Linux Security Modules），可将各种安全模块集成到内核中
+    - CONFIG：SECURITY_NETWORK（bool "Socket and Networking Security Hooks"）
+    - 基本原理：
+        - 在内核关键调用路径中插入hook函数（钩子函数）
+            - 关键调用路径涉及的关键对象（安全相关）：
+                - task_struct：进程
+                - linux_binprm：程序
+                - super_block：文件系统
+                - inode：管道，socket套接字
+                - sk_buff：网络缓冲区
+                - net_device：网络设备
+                - ker_ipc_perm：共享内存段，消息队列（IPC进程间通信）
+                - msg_msg：消息
+                - ...
+        - LSM中hook函数作用：在传统Linux安全（DAC，自主访问控制）后追加安全/访问控制模块（额外的安全检测，一般为MAC，强制访问控制）
+    - 实现：以open()系统调用为例
+        - 设置钩子（hook函数）：
+            - security/security.c：
+                - security_file_open()  =>  open()
+                    - open()：关键调用
+                    - security_file_open()：钩子函数
+                - #define call_int_hook(FUNC, IRC, ...)/call_void_hook(FUNC, ...)  =>  security_file_open()
+                    - call_int_hook()：钩子函数调用
+                        - FUNC：关键调用类型，open()关键调用为file_open
+                        - IRC：返回值（int）
+                - #define list_for_each_entry(p, head, member)  -->  call_int_hook()/call_void_hook()
+                    - list_for_each_entry()：依次调用对应链表上的处理函数（p->hook.FUNC）
+                        - p：循环变量，为struct security_hook_list *p
+                        - head：起始位置，为&security_hook_heads.FUNC（open()对应链表security_hook_heads.file_open）
+        - 定义处理函数：由安全/访问控制模块来定义，以SELinux为例
+            - security/selinux/hooks.c：
+                - struct security_hook_list selinux_hooks[] = {..., LSM_HOOK_INIT(file_open, selinux_file_open), ...}
+                    - security_hook_list：钩子函数列表结构体（访问控制模块接口）
+                - #define LSM_HOOK_INIT(HEAD, HOOK)  -->  struct security_hook_list
+                    - LSM_HOOK_INIT：钩子函数初始化/接口实现
+                        - HEAD：security_hook_heads.HEAD链表（security_hook_heads.file_open）
+                        - HOOK：security_hook_heads.HEAD链表的处理函数（selinux_file_open）
+        - 注册处理函数：
+            - security/selinux/hooks.c：
+                - static __init int selinux_init(void)
+                    - selinux_init()：SELinux初始化函数，其中注册处理函数
+            - security/security.c：
+                - void __init security_add_hooks(hooks, count, lsm)  -->  selinux_init()
+                    - security_add_hooks()：将访问控制模块接口selinux_hooks[]注册到LSM框架中
+                        - hooks：访问控制模块接口，即struct security_hook_list selinux_hooks[]
+                        - count：hooks大小，即ARRAY_SIZE(selinux_hooks)
+                        - lsm：安全模块名称，即selinux
+    - 数据接口：
+        - LSM_HOOK：宏，通用接口
+        - LSM_HOOK_INIT：宏，接口实现
+        - security_hook_heads：结构体，LSM接口管理，管理各安全/访问控制模块接口（hlist_head结构体）
+        - security_hook_list：结构体，访问控制模块接口，记录单个接口信息（LSM_HOOK_INIT）
+        - security_add_hooks：函数，将访问控制模块接口（security_hook_list）添加到LSM（security_hook_heads）
+        - call_void_hook/call_int_hook：宏，LSM调用接口
+            - 通过LSM（security_hook_heads）获取接口的hlist_head
+            - 遍历hlist_head获取每个访问控制模块接口（security_hook_list）
+            - 根据访问控制模块接口（security_hook_list），最后调用实际的接口函数（处理函数）
+        - lsm_info：结构体，访问控制模块信息
+2）SELinux
+    - SELinux（Security Enhanced Linux），LSM集成的MAC安全模块之一
+    - LSM <-> AVC <-> ss
+    - SID：内核用以映射安全上下文
+    - SELinux内核空间（kernel/security/selinux/）：
+        - ss/：SS（Security Service）
+            - avtab.c|h：访问向量表（类型对和类索引的访问向量和转换类型的hash表）
+            - conditional.c|h：条件（booleans，ss使用）
+            - constraint.h：约束（TE，RBAC规则之外的限制）
+            - context.c|h：安全上下文（ss使用）
+            - ebitmap.c|h：可扩展位图表（ebitmap，extensible bitmap）
+            - hashtab.c|h：哈希表（hashtab）
+            - mls.c|h：多级安全（MLS，Multi-Level Security）策略操作
+            - mls_types.h：多级安全（MLS，Multi-Level Security）策略类型定义
+            - policydb.c|h：策略数据库（policydb，安全策略的配置数据）
+            - services.c|h：SELinux安全服务器（Security Services）
+                - SELinux用于加载策略，分析策略的服务
+            - sidtab.c|h：安全标识符表（sidtab，SID为索引的安全上下文查找表）
+            - symtab.c|h：符号表（symtab，hash表类型）
+        - avc.c：AVC（Access Vector Cache），用于高效缓存
+            - 在LSM接入SELinux时，优先在AVC中检测
+        - selinuxfs.c：SELinuxFS（SELinux File System）伪文件系统
+            - 将SELinux安全上下文加到文件系统的扩展属性中
+        - hooks.c：SELinux HOOK
+        - ibpkey.c：Infinband PKEY（Protection KEY）到SID的映射
+        - netif.c：网络接口（设备）到SID的映射
+        - netlabel.c：NetLabel（网络标签/安全上下文）支持
+        - netlink.c：Netlink事件通知支持
+        - netnode.c：网络节点到SID的映射
+        - nlmsgtab.c：Netlink消息类型权限表（nlmsgtab，用于用户生成的消息）
+        - status.c：基于mmap的事件通知支持
+        - xfrm.c：SELinux XFRM钩子函数

@@ -78,9 +78,48 @@
     - 以时钟独立划分：
         - 同步总线：时钟信号独立于数据（统一）
         - 异步总线：时钟信号从数据中提取
-3）重要总线介绍：
-    - 工业标准结构（ISA，Industry Standard Architecture）：已被淘汰
-    - 串行外设接口（SPI，Serial Peripheral Interface）：同步串行通行，4线高速全双工，用于EEPROM，FLASH，实时时钟，AD转换器...
-    - 内部集成电路（I2C，Inter-Integrated Circuit）：同步串行通信，双向2线，用于集成电路（ICs）间
-    - 通用串行总线（USB，Universal Serial Bus）：异步串行通信，连接外部设备的总线标准，如鼠标，键盘...
-    - 外设组件互连（PCI，Peripheral Component Interconnect）：同步并行通信，连接外部设备的总线标准，如显卡，声卡，网卡...
+3）总线及接口：
+    - ISA（Industry Standard Architecture）：工业标准结构
+        - 也称AT标准，已被淘汰
+        - PC/AT电脑，可扩容存储器和I/O设备
+    - SPI（Serial Peripheral Interface）：串行外设接口
+        - 同步串行通行，4线高速全双工
+        - 用于EEPROM，FLASH，实时时钟，AD转换器...
+    - I2C（Inter-Integrated Circuit）：内部集成电路
+        - 同步串行通信，双向2线
+        - I2C接口：用于集成电路（ICs）间
+    - USB（Universal Serial Bus）：通用串行总线
+        - 异步串行通信，连接外部设备的总线标准
+        - 信息通讯产品，如鼠标，键盘...
+    - PCI（Peripheral Component Interconnect）：外设组件互连
+        - 同步并行通信，连接外部设备的总线标准
+        - 周边元件扩展接口，如声卡，网卡，视频卡传输...
+    - PCIE（PCI-Express）：3GIO，数据传输 - PCI总线
+    - AGP（Accelerated Graphics Port）：加速图像处理端口
+        - 如显卡，图形优化
+    - CAN（Controller Area Network）：控制器局域网络
+        - CAN接口：汽车计算机控制系统和嵌入式工业控制局域网
+    - SCSI（Small Computer System Interface）：小型计算机系统接口
+        - 可连接主机适配器和8个SCSI外设控制器
+        - 用于计算机及其周边设备之间（硬盘、软驱、光驱、打印机、扫描仪等）系统级接口
+    - IDE（Integrated Drive Electronics）：电子集成驱动器
+        - 磁盘驱动器接口，主要用于硬盘和CD-ROM
+    - ATA（Advanced Technology Attachment）：高技术配置
+        - 后改名PATA，已被淘汰
+        - 控制器技术，被IDE适配
+    - DMA（Direct Memory Access）：直接存储器访问
+        - 嵌入式系统，沟通不同速度的硬件装置
+    - SATA（Serial Advanced Technology Attachment）：
+    - D-sub/DB：D型数据接口
+        - DA-15：VGA接口
+        - DB-25：串/并口（RS-232）
+        - DC-37
+        - DD-50
+        - DE-9：串口（RS-232、RS-485）
+    - DVI（Digital Visual Interfac）：数字视频接口
+    - HDMI（High Definition Multimedia Interface）：高清多媒体接口
+    - RJ45（Registered Jack）：标准8位模块化接口
+        - 网卡传输
+    - PS/2：鼠标，键盘（输入装置接口，只有扫描速率）
+    - ANT：天线
+        - RF射频接口
