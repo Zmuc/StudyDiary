@@ -206,3 +206,170 @@
     - seinfo -t：查看所有声明
         - t：查看类型声明
     - sesearch --allow -t a_t：查看a_t类型相关的所有allow规则
+7）sepolicy
+    - 策略模块文件：
+        - .te：TE策略
+        - .fc：文件安全上下文
+        - .if：TE策略接口
+    - SELinux策略如何写：
+        - 首先在*/policy/modules/目录下创建自定义模块目录（mymodules）
+        - 自定义模块目录下创建metadata.xml（<summary>自定义模块描述</summary>）
+        - 创建SELinux策略模块文件（xxx.te/.fc/.if）
+        - 在xxx.fc中加上文件安全上下文
+            - xxx二进制命令一般为xxx_exec_t
+            - xxx配置文件一般为xxx_etc_t
+            - xxx库一般为xxx_lib_t
+            - xxx文档一般为xxx_doc_t
+            - xxx需要特殊权限的文件一般增加相应字段
+                - xxx特殊权限文件xxx_add（xxx_add_exec_t，xxx_add_etc_t，xxx_add_lib_t等）
+        - 在xxx.te中编写具体策略规则
+            - user xxx_u;  // 安全上下文用户声明，命名一般*_u，用来限定角色
+            - role xxx_r;  // 安全上下文角色声明，命名一般*_r，用来限定类型
+            - type xxx_t;  // 安全上下文类型声明，命名一般*_t，核心
+                - typealias xxx_t alias xxx_old_t;  // 类型别名，出于兼容性考虑
+            - attribute xxx_type;  // 安全上下文属性声明，命名一般*_type，类型集合
+                - typeattribute xxx_t xxx1_type, xxx2_type;  // 将类型和属性关联
+            - allow xxx_t xxx_etc_t:file { read write };  // 权限设置（白名单机制，不设置都无权限）
+            - type_transition user_t xxx_exec_t:process xxx_t;  // 域转换
+                - 域转换先决条件（以user_t为例）：
+                    - allow user_t xxx_exec_t:file execute;    // 用户对二进制命令有执行权限
+                    - allow user_t xxx_t:process transition;   // 用户可由当前域向进程域转换的权限
+                    - allow xxx_t xxx_exec_t:file entrypoint;  // 二进制命令作为进程域进入的权限
+                - 解释：user_t用户，执行命令（xxx_exec_t）后域转换（user_t -> xxx_t）
+        - 在xxx.if中编写策略接口（可以理解为函数）
+            - 接口应有描述信息（<summary>接口描述</summary>）
+            - interface(`xxx_if',`gen_require(`type xxx_t;') allow $1 ***;')
+                - xxx_if：接口名
+                - xxx_t：声明参数
+                - allow $1 ***：接口内规则
+                    - $1：传入的第一个参数
+            - 高频接口/宏：
+                - can_exec(xxx_t, xxx_exec_t)：xxx_t对xxx_exec_t的执行权限
+                - init_daemon_domain(xxx_t, xxx_exec_t)：xxx_exec_t类型的文件，以xxx_t作为守护进程/服务的域
+                - init_system_domain(xxx_t, xxx_exec_t)：xxx_exec_t类型的文件，以xxx_t作为短期进程的域
+                - init_script_file(xxx_exec_t)：xxx_exec_t作为初始化脚本的权限
+                - init_unit_file(xxx_unit_t)：xxx_unit_t作为systemd unit文件的权限
+                - files_config_file(xxx_etc_t)：xxx_etc_t作为配置文件的权限
+    - 其他重要文件：
+        - */policy/support/misc_macros.spt：其他宏
+            - can_exec(domain,executable)：执行权限
+        - */policy/support/misc_patterns.spt：域转换
+            - *transition_pattern/*process_pattern/*trans_pattern
+        - */policy/support/file_patterns.spt：文件
+            - *_dirs_pattern：目录权限
+            - *_files_pattern：普通文件权限
+            - *_lnk_files_pattern：软链接权限
+            - *_fifo_files_pattern：管道权限
+            - *_sock_files_pattern：套接字权限
+            - *_blk_files_pattern：块设备权限
+            - *_chr_files_pattern：字符设备权限
+            - filetrans_*_pattern：类型转换
+            - admin_pattern：文件类型管理
+        - */policy/support/obj_perm_sets.spt：集合
+            - *_set：文件类别集合
+            - *_perms：执行许可/操作集合
+
+4. systemd
+1）systemd是系统与服务管理器，其后台服务进程PID=1
+2）systemd特性：
+    - 服务按需启动
+    - 服务并发启动（通过配置依赖项确保启动顺序）
+    - 使用cgroups跟踪管理服务的生命周期
+    - journald：统一管理服务日志
+3）systemd架构：
+    - Linux Kernel：内核涉及模块
+        - cgroups：控制组群（Control groups），限制、控制与分离一个进程组的资源
+        - autofs：自动检测文件系统并挂载（若存在），自动卸载不活跃的文件系统
+        - kdbus：内核中实现的D-Bus，可传输大块数据，用于GB级的消息流
+    - 依赖库Libraries：运行所依赖的动态库
+        - dbus-1：D-Bus，轻量IPC
+        - libpam：PAM模块
+        - libcap：网络数据包捕获
+        - libcryptsetup：磁盘加密
+        - libaudit：Audit审计
+        - tcpwrapped：tcp_wrappers，主机访问控制
+        - libnotify：桌面通知
+    - 目标Targets：启动阶段/运行级别
+        - poweroff
+        - rescue
+        - multi-user
+        - graphical
+        - reboot
+    - 守护进程Daemons：相关守护进程
+        - systemd：systemd服务主守护进程
+        - journald：日志守护进程
+        - networkd：网络守护进程
+        - logind：登录守护进程
+    - 工具Utilities：二进制命令工具
+        - systemctl：检查/控制系统服务和资源的状态
+        - journalctl：查看系统日志/服务日志
+        - bootctl：查看/管理系统启动分区
+        - loginctl：管理系统已登录用户/Session的信息
+        - systemd-notify：通知服务的状态变化
+        - systemd-analyze：分析系统本次启动时服务所消耗的时间
+        - systemd-cgls：递归显示cgroups继承链
+        - systemd-cgtop：显示cgruops top
+        - systemd-nspawn：创建systemd容器
+4）systemd Unit：
+    - Unit文件目录：优先级从高到低
+        - /etc/systemd/system
+            - /etc/systemd/system/multi-user.target.wants：multi-user.target分组中开机启动服务
+        - /run/systemd/system
+        - /usr/lib/systemd/system
+    - Unit文件类型：
+        - .target：Unit逻辑分组，引导其它Unit执行，即运行级别
+            - 0/poweroff.target：关闭系统
+            - 1/rescue.target：单用户模式
+            - 2/mulit-user.target：用户定义/域
+            - 3/mulit-user.target：多用户模式
+            - 4/mulit-user.target：用户定义/域
+            - 5/graphical.target：图形模式
+            - 6/reboot.target：重启
+            - emergency：急救模式
+        - .service：服务启动配置
+            - [Unit]
+                - Description=SELinux init service loading：Unit描述信息
+                - DefaultDependencies=no：默认依赖项
+                - After=local-fs.target：在local-fs.target分组服务启动之后启动
+                - Before=sysinit.target：在sysinit.target分组服务启动之前启动
+            - [Service]
+                - Type=oneshot：启动模式
+                    - simple：默认值
+                    - forking：fork()形式创建子进程
+                    - oneshot：一次性进程，systemd会等待进程退出
+                    - dbus：通过D-Bus启动
+                    - notify：启动完毕通知systemd继续
+                    - idle：等待其他任务执行完成
+                - ExecStart=/usr/bin/selinux-init.sh：当前服务执行命令
+            - [Install]
+                - WantedBy=multi-user.target：服务当前的分组
+        - .automount：控制自动挂载文件系统（类似autofs）
+        - .device：设备（/dev）之间的依赖关系
+        - .mount：系统结构层次中的一个挂载点（代替/etc/fstab）
+        - .path：监控指定目录或文件的变化，并触发相应Unit运行
+        - .scope：Systemd运行时产生的系统服务的分组信息
+        - .slice：cgroups树（一般用户不会创建）
+        - .snapshot：由systemctl snapshot命令创建的Unit运行状态快照
+        - .socket：基于数据自动触发服务启动
+        - .swap：虚拟内存的交换分区
+        - .timer：特定时间触发的任务（代替crontab）
+
+5. docker/podman：
+1）容器，Linux主机上提供多个隔离Linux环境的操作系统级虚拟化技术
+    - docker，podman都是容器，podman简单兼容docker（alias docker=podman）
+2）podman是无守护进程的容器引擎，管理和运行OCI（Open Container Initiative）容器和容器镜像
+3）podman容器可由root用户运行，也可由非特权用户运行
+4）podman命令：
+    - podman version：查看版本号
+    - podman info：显示系统信息
+    - podman images：列出现有的镜像
+    - podman search [apache]：查找[apache]相关镜像
+    - podman inspect [NAME]：查看[NAME]镜像详细信息
+    - podman push [NAME]：上传[NAME]镜像
+    - podman pull [NAME]：拉取[NAME]镜像
+    - podman run [NAME]：运行[NAME]容器
+    - podman stop [NAME]：停止[NAME]容器
+    - podman start [NAME]：启动[NAME]容器
+    - podman logs [NAME]：查看[NAME]容器的日志
+    - podman top [NAME]：查看[NAME]容器的进程信息
+    - podman rm [NAME]：删除[NAME]容器
