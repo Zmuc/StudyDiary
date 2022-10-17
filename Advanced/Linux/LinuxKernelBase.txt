@@ -115,94 +115,130 @@
             |--> cpu_idle()                   // 开启死循环（空闲时），即idle进程（PID=0）
 
 4. Security
-1）LSM（Linux安全模块框架）：
+1）LSM：
     - LSM（Linux Security Modules），可将各种安全模块集成到内核中
-    - CONFIG：SECURITY_NETWORK（bool "Socket and Networking Security Hooks"）
-    - 基本原理：
         - 在内核关键调用路径中插入hook函数（钩子函数）
-            - 关键调用路径涉及的关键对象（安全相关）：
-                - task_struct：进程
-                - linux_binprm：程序
-                - super_block：文件系统
-                - inode：管道，socket套接字
-                - sk_buff：网络缓冲区
-                - net_device：网络设备
-                - ker_ipc_perm：共享内存段，消息队列（IPC进程间通信）
-                - msg_msg：消息
-                - ...
-        - LSM中hook函数作用：在传统Linux安全（DAC，自主访问控制）后追加安全/访问控制模块（额外的安全检测，一般为MAC，强制访问控制）
-    - 实现：以open()系统调用为例
-        - 设置钩子（hook函数）：
-            - security/security.c：
-                - security_file_open()  =>  open()
-                    - open()：关键调用
-                    - security_file_open()：钩子函数
-                - #define call_int_hook(FUNC, IRC, ...)/call_void_hook(FUNC, ...)  =>  security_file_open()
-                    - call_int_hook()：钩子函数调用
-                        - FUNC：关键调用类型，open()关键调用为file_open
-                        - IRC：返回值（int）
-                - #define list_for_each_entry(p, head, member)  -->  call_int_hook()/call_void_hook()
-                    - list_for_each_entry()：依次调用对应链表上的处理函数（p->hook.FUNC）
-                        - p：循环变量，为struct security_hook_list *p
-                        - head：起始位置，为&security_hook_heads.FUNC（open()对应链表security_hook_heads.file_open）
-        - 定义处理函数：由安全/访问控制模块来定义，以SELinux为例
-            - security/selinux/hooks.c：
-                - struct security_hook_list selinux_hooks[] = {..., LSM_HOOK_INIT(file_open, selinux_file_open), ...}
-                    - security_hook_list：钩子函数列表结构体（访问控制模块接口）
-                - #define LSM_HOOK_INIT(HEAD, HOOK)  -->  struct security_hook_list
-                    - LSM_HOOK_INIT：钩子函数初始化/接口实现
-                        - HEAD：security_hook_heads.HEAD链表（security_hook_heads.file_open）
-                        - HOOK：security_hook_heads.HEAD链表的处理函数（selinux_file_open）
-        - 注册处理函数：
-            - security/selinux/hooks.c：
-                - static __init int selinux_init(void)
-                    - selinux_init()：SELinux初始化函数，其中注册处理函数
-            - security/security.c：
-                - void __init security_add_hooks(hooks, count, lsm)  -->  selinux_init()
-                    - security_add_hooks()：将访问控制模块接口selinux_hooks[]注册到LSM框架中
-                        - hooks：访问控制模块接口，即struct security_hook_list selinux_hooks[]
-                        - count：hooks大小，即ARRAY_SIZE(selinux_hooks)
-                        - lsm：安全模块名称，即selinux
-    - 数据接口：
-        - LSM_HOOK：宏，通用接口
-        - LSM_HOOK_INIT：宏，接口实现
-        - security_hook_heads：结构体，LSM接口管理，管理各安全/访问控制模块接口（hlist_head结构体）
-        - security_hook_list：结构体，访问控制模块接口，记录单个接口信息（LSM_HOOK_INIT）
-        - security_add_hooks：函数，将访问控制模块接口（security_hook_list）添加到LSM（security_hook_heads）
-        - call_void_hook/call_int_hook：宏，LSM调用接口
-            - 通过LSM（security_hook_heads）获取接口的hlist_head
-            - 遍历hlist_head获取每个访问控制模块接口（security_hook_list）
-            - 根据访问控制模块接口（security_hook_list），最后调用实际的接口函数（处理函数）
-        - lsm_info：结构体，访问控制模块信息
+        - LSM在Linux自主访问控制（DAC，Discretionary Access Control）后增加强制访问控制（MAC，Mandatory Access Control）
+    - LSM内核空间（kernel/security/）：
+        - security.c：LSM HOOK及处理函数
+        - apparmor|selinux|...：LSM可选模块
+    - LSM实现：举例系统调用open及子模块SELinux
+        - 注册子模块：连接LSM HOOK接口和子模块处理函数
+            * DEFINE_LSM()             // 定义子模块的lsm_info结构体
+            --> security_init()        // 初始化LSM
+                |--> initialize_lsm()      // 遍历子模块并初始化（根据lsm_info.enabled决定初始化）
+                    |--> selinux_init()        // 初始化SELinux（lsm_info.init）
+                        |--> security_add_hooks()  // 将SELinux注册到LSM中，即LSM HOOK -> SELinux处理函数
+        - 定义子模块处理函数：
+            * selinux_hooks[]          // SELinux处理函数接口表（结构体）
+                |--> LSM_HOOK_INIT()       // 定义LSM HOOK接口对应的SELinux处理函数
+                    |--> selinux_file_open()   // SELinux处理函数实现
+        - 在系统调用路径中设置钩子（HOOK函数）：
+            * open                                 // 系统调用open
+            --> do_dentry_open()                       // open的实现
+                |--> security_file_open()                  // LSM安全处理，再调用call_*_hook(接口函数名...)
+                    |--> call_int_hook()/call_void_hook()      // open的LSM HOOK接口
+                        |--> list_for_each_entry(p, head, member)  // 根据接口函数名，执行注册子模块的处理函数
+    - 重要函数及结构：
+        - #define LSM_HOOK(RET, DEFAULT, NAME, ...);
+            - 宏，LSM HOOK接口定义，定义接口名称，返回值，参数等
+            - RET：返回类型
+            - DEFAULT：默认值
+            - NAME：HOOK名称
+            - ...：参数
+            - 举例：LSM_HOOK(int, 0, file_open, struct file *file)
+                - 系统调用open的HOOK名称为file_open，参数在file（struct file *）中
+        - struct security_hook_heads {...};
+            - 结构体，LSM HOOK接口管理
+            - #define LSM_HOOK(RET, DEFAULT, NAME, ...) struct hlist_head NAME：将LSM_HOOK -> struct hlist_head
+            - 举例：&security_hook_heads.file_open;
+                - security_hook_heads是哈希表，file_open是哈希表表头（hlist_head）
+        - struct security_list_options {...};
+            - 结构体，LSM HOOK函数
+            - #define LSM_HOOK(RET, DEFAULT, NAME, ...) RET (*NAME)(__VA_ARGS__)：将LSM_HOOK -> RET (*NAME)(__VA_ARGS__)
+        - struct security_hook_list {...};
+            - 结构体，LSM HOOK接口列表
+            - struct hlist_node list：哈希表结点
+            - struct hlist_head* head：指向哈希表头
+            - union security_list_options hook：LSM HOOK函数列表
+            - char *lsm：LSM子模块名称
+            - 举例：struct security_hook_list selinux_hooks[] = {..., LSM_HOOK_INIT(file_open, selinux_file_open), ...};
+                - HOOK接口与子模块处理函数对应列表，其中file_open的处理函数为selinux_file_open()
+        - #define LSM_HOOK_INIT(HEAD, HOOK);
+            - 宏，快速初始化security_hook_list结构体
+            - security_hook_list.head = &security_hook_heads.HEAD
+            - security_hook_list.hook = { .HEAD = HOOK }
+            - 举例：LSM_HOOK_INIT(file_open, selinux_file_open);
+                - file_open：HOOK键（&security_hook_heads.file_open）
+                - selinux_file_open：通过HOOK键（file_open），需执行的处理函数selinux_file_open()
+        - void __init security_add_hooks(hooks, count, lsm);
+            - 函数，注册子模块的HOOK函数
+            - hooks：LSM HOOK接口列表，即struct security_hook_list[]
+            - count：hooks大小
+            - lsm：子模块名称
+            - 举例：security_add_hooks(selinux_hooks, ARRAY_SIZE(selinux_hooks), "selinux");
+                - 将selinux_hooks上所有list注册到对应的head（selinux_file_open() -> file_open）
+        - struct lsm_info {...};
+            - 结构体，LSM子模块信息
+            - const char *name：子模块名（必须）
+            - enum lsm_order order：默认为LSM_ORDER_MUTABLE
+            - unsigned long flags：描述LSM的标志
+            - int *enabled：由CONFIG_LSM控制
+            - int (*init)(void)：子模块初始化函数（必须）
+            - struct lsm_blob_sizes *blobs：子模块初始化大小
+            - 举例：lsm_info.init;
+                - 执行init对应的函数
+        - #define DEFINE_LSM(lsm)
+            - 宏，定义LSM子模块
+            - lsm：LSM子模块
+            - 举例：DEFINE_LSM(selinux) = {
+                .name = "selinux",
+                .flags = LSM_FLAG_LEGACY_MAJOR | LSM_FLAG_EXCLUSIVE,
+                .enabled = &selinux_enabled_boot,
+                .blobs = &selinux_blob_sizes,
+                .init = selinux_init,};
+                - 定义LSM子模块selinux，核心是模块名（selinux）及模块初始化函数（selinux_init）
+        - #define call_int_hook(FUNC, IRC, ...)/call_void_hook(FUNC, ...);
+            - 宏，LSM HOOK接口 --> 子模块处理函数
+            - FUNC：接口名称
+            - IRC：返回值，仅call_int_hook宏有该参数
+            - 举例：ret = call_int_hook(file_open, 0, file);
+                - file_open：系统调用open的HOOK接口名称
+                - hlist_for_each_entry(P, &security_hook_heads.file_open, list);
+                    - 宏，哈希表for循环，得到HOOK接口对应的子模块处理函数
 2）SELinux
     - SELinux（Security Enhanced Linux），LSM集成的MAC安全模块之一
-    - LSM <-> AVC <-> ss
-    - SID：内核用以映射安全上下文
+        - SID：内核用以映射安全上下文
     - SELinux内核空间（kernel/security/selinux/）：
+        - include/classmap.h：客体类别（class）和访问类型（perm）的映射
         - ss/：SS（Security Service）
-            - avtab.c|h：访问向量表（类型对和类索引的访问向量和转换类型的hash表）
-            - conditional.c|h：条件（booleans，ss使用）
-            - constraint.h：约束（TE，RBAC规则之外的限制）
-            - context.c|h：安全上下文（ss使用）
-            - ebitmap.c|h：可扩展位图表（ebitmap，extensible bitmap）
-            - hashtab.c|h：哈希表（hashtab）
-            - mls.c|h：多级安全（MLS，Multi-Level Security）策略操作
-            - mls_types.h：多级安全（MLS，Multi-Level Security）策略类型定义
-            - policydb.c|h：策略数据库（policydb，安全策略的配置数据）
-            - services.c|h：SELinux安全服务器（Security Services）
-                - SELinux用于加载策略，分析策略的服务
-            - sidtab.c|h：安全标识符表（sidtab，SID为索引的安全上下文查找表）
-            - symtab.c|h：符号表（symtab，hash表类型）
-        - avc.c：AVC（Access Vector Cache），用于高效缓存
-            - 在LSM接入SELinux时，优先在AVC中检测
         - selinuxfs.c：SELinuxFS（SELinux File System）伪文件系统
             - 将SELinux安全上下文加到文件系统的扩展属性中
-        - hooks.c：SELinux HOOK
-        - ibpkey.c：Infinband PKEY（Protection KEY）到SID的映射
-        - netif.c：网络接口（设备）到SID的映射
-        - netlabel.c：NetLabel（网络标签/安全上下文）支持
-        - netlink.c：Netlink事件通知支持
-        - netnode.c：网络节点到SID的映射
-        - nlmsgtab.c：Netlink消息类型权限表（nlmsgtab，用于用户生成的消息）
-        - status.c：基于mmap的事件通知支持
-        - xfrm.c：SELinux XFRM钩子函数
+        - hooks.c：SELinux HOOK及处理函数
+        - avc.c：AVC（Access Vector Cache），用于高效缓存
+            - 在LSM接入SELinux时，优先在AVC中检测
+    - SELinux实现：
+        - 初始化：early_security_init()/早期（内核启动）LSM初始化 -> security_init()/LSM初始化 -> ordered_lsm_init()/遍历LSM模块 -> initialize_lsm()/启动LSM模块 -> lsm_info.init() -> selinux_init()
+            * selinux_init()               // 初始化SELinux
+                --> *_set()/*_init()           // 初始化selinux_state结构体
+                --> cred_init_security()       // 初始化init任务的安全上下文（struct cred：任务的安全上下文）
+                    |--> selinux_cred()            // 初始化当前进程的（task_struct，current宏获取）安全上下文
+                --> avc_init()                 // 初始化AVC（Access Vector Cache）
+                --> *_cache_init()             // 缓存初始化
+                --> security_add_hooks()       // 将SELinux注册到LSM中
+                --> avc_add_callback()         // 注册安全事件的回调
+                --> fs_validate_description()  // 验证参数描述
+        - 系统调用：open -> do_dentry_open() -> security_file_open()/LSM钩子 <-(file_open)/key-> selinux_file_open()/SELinux处理函数
+            * selinux_file_open()        // open()系统调用的SELinux MAC
+                |--> *_has_perm()            // 权限检测前的处理
+                    |--> avc_has_perm()           // 权限检测
+    - 重要函数及结构：
+        - int avc_has_perm(struct selinux_state *state, u32 ssid, u32 tsid, u16 tclass, u32 requested, struct common_audit_data *auditdata);
+            - state：SELinux状态结构体
+            - ssid：主体SID
+            - tsid：客体SID
+            - tclass：客体类别
+            - requested：权限
+            - auditdata：辅助数据（audit）
+            - 举例：avc_has_perm(&selinux_state, current_sid(), task_sid(p), SECCLASS_PROCESS, PROCESS__GETSCHED, NULL);
+                - 判定权限：allow s_t t_t:process getsched;
