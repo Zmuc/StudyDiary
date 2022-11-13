@@ -1,0 +1,125 @@
+1. ADB
+1）ADB（Android Debug Bridge），Android调试桥，设备通信及操作
+2）ADB组成：
+    - adb：本地开发环境，包含adb的client及server端
+        - client端：发送命令，与server端交互（可以有多个，启动时若无server端运行则会自动起）
+        - server端：运行在TCP:localhost:5037（127.0.0.1:5037）的后台进程，接受并处理client端的请求，usb端口对应设备（client端与adbd的桥梁）
+    - adbd：运行在设备上的守护进程
+3）通信方式：
+    - adb（client端 <-> server端）：
+        - 普通模式：
+            - request：请求长度（4字节16进制） + 内容
+            - response：
+                - 成功：OKAY（4字节） // host:version不返回OKAY，而是server内部版本号（4字节）
+                - 失败：FAIL（4字节） + 失败响应长度（4字节16进制） + 内容
+            - 具体命令：
+                - HOST SERVICES：本地开发环境控制命令
+                    - host:version：查看server端版本号
+                    - host:kill：停止server后台进程
+                    - host:devices：获取设备列表及状态
+                    - host:emulator:<port>：连接指定port的模拟器
+                    - host:transport:<serial-number>：连接指定serial-number的设备/模拟器
+                    - host:transport-usb：连接USB上的设备（多个失败）
+                    - host:transport-local：通过TCP方式连接模拟器（多个失败）
+                    - host:transport-any：连接USB设备或模拟器（多个失败）
+                    - host-serial:<serial-number>:<request>：向指定serial-number的设备/模拟器发送请求（多个失败）
+                    - host-usb:<request>：向USB设备发送请求（多个失败）
+                    - host-local:<request>：向模拟器发送请求（多个失败）
+                    - host:<request>：向正在连接的设备/模拟器发送请求
+                        - <host-prefix>:get-serialno：获取设备/模拟器的serial-number
+                        - <host-prefix>:get-state：获取设备/模拟器的状态
+                        - <host-prefix>:get-devpath：获取设备/模拟器的路径
+                        - <host-prefix>:forward:<local>;<remote>：将本地连接从给定设备上的<local>转发到<remote>地址
+                - LOCAL SERVICES：操作设备命令
+                    - shell：登录设备SHELL（交互）
+                    - shell:command arg：在设备上执行command arg
+                    - remount：重新挂载设备的文件系统（read-write）
+                    - sync：文件同步
+                        - push：将文件发送到设备上
+                        - pull：接收设备上的文件
+                    - dev:<path>：打开设备上指定路径
+                    - local:<path>：连接设备上指定路径
+                    - log:<name>：打开设备上指定文件日志
+                    - tcp:<port>：让设备连接本地开发环境的某个TCP端口
+                    - tcp:<port>:<server-name>：让设备连接指定主机的某个TCP端口
+        - 同步模式：由普通模式-LOCAL SERVICES-sync进入
+            - sync request：同步请求类型（4字节UTF-8） + 长度（4字节小端整数）
+                - LIST：列出目录中的文件
+                - RECV：接收设备上的文件
+                - SEND：将文件发送到设备上
+                - STAT：显示文件的状态信息
+            - sync response：同步响应类型（4字节UTF-8）
+            - 请求响应举例：
+                - LIST：
+                    - DENT：LIST同步响应
+                    - 文件模式（4）
+                    - 文件大小（4）
+                    - 上次修改时间（4）
+                    - 文件名长度（4）
+                    - 长度字节数（包含UTF-8的文件名）
+                    - DONE&&QUIT：LIST完成并退出同步模式
+                - SEND/RECV：
+                    - SEND+$len（长度）：SEND同步请求，len=$remote_file_path+','+$file_mode
+                    - $remote_file_path（远端文件路径）
+                    - ','+$file_mode（文件权限）
+                    - 文件传输（循环，直至文件被完整传输）
+                        - DATA+$data_len（本次即将传输字节长度）
+                        - $data_byte（传输字节<=64K）
+                    - DONE&&QUIT：SEND完成并退出同步模式
+    - adb <-> adbd：
+        - 通信协议：24字节的报头 + 有效载荷（可选）
+            - 报头格式：6 * 4字节（4 * 8 = 32bit）
+                struct message {
+                    unsigned command;       // 命令标识符常数（A_CNXN, ...）
+                    unsigned arg0;          // 第一个参数
+                    unsigned arg1;          // 第二个参数
+                    unsigned data_length;   // 有效载荷长度（0 <= x <= maxdata）
+                    unsigned data_crc32;    // 有效载荷CRC32（Cyclic Redundancy Check，循环冗余校验）
+                    unsigned magic;         // command ^ 0xffffffff
+                };
+            - 消息类型：COMMAND(arg0, arg1, payload)
+                - A_CNXN：CONNECT(version, maxdata, "system-identity-string")
+                    - 确认远程系统的存在
+                    - version：确保兼容性
+                    - maxdata：声明远程系统接受的消息体最大值
+                    - system-identity-string：<systemtype>:<serialno>:<banner>
+                        - systemtype：bootloader|device|host
+                        - serialno：唯一ID|NULL
+                        - banner：版本或标识字符串
+                - A_AUTH：AUTH(type, 0, "data")
+                    - 身份验证
+                    - type：验证类型
+                        - TOKEN(1)
+                        - SIGNATURE(2)
+                        - RSAPUBLICKEY(3)
+                    - data：数据，对应type
+                        - TOKEN(1)：随机令牌，接收方用私钥对其签名
+                        - SIGNATURE(2)：接收方的私钥签名，发送方若验证通过则发送CONNECT包，不通过则重复TOKEN(1)
+                        - RSAPUBLICKEY(3)：公钥，当SIGNATURE(2)私钥验证全不通过时，接收方发送公钥以期望建立新的密钥
+                - A_OPEN：OPEN(local-id, 0, "destination")
+                    - 将local-id流连接到指定目的地（同时READY），必须有返回（READY|CLOSE）
+                    - local-id：流（非0）
+                    - destination：目的地
+                        - tcp:<host>:<port>：省略<host>表示本地主机
+                        - udp:<host>:<port>
+                        - local-dgram:<identifier>
+                        - local-stream:<identifier>
+                        - shell：本地SHELL服务
+                        - upload：推送文件的服务（如aproto's/sync）
+                        - fs-bridge：FUSE协议文件系统桥
+                - A_OKAY：READY(local-id, remote-id, "")
+                    - 发送方local-id流已准备好写入消息，且已连接到接收方remote-id流
+                    - local-id：流（非0），建立连接的READY之后的READY都忽略local-id，且不可更改
+                    - remote-id：流（非0）
+                - A_WRTE：WRITE(local-id, remote-id, "data")
+                    - 将数据发送到接收方remote-id流，需发送方收到READY，有效载荷长度 <= maxdata
+                    - local-id：流（非0）
+                    - remote-id：流（非0）
+                    - data：数据
+                - A_CLSE：CLOSE(local-id, remote-id, "")
+                    - 发送方local-id流与接收方remote-id流连接断开，不回复该消息
+                    - local-id：流
+                    - remote-id：流（非0）
+        - 通信方式：
+            - USB transports：通过USB和物理设备通信
+            - Local transports：通过TCP和模拟器通信

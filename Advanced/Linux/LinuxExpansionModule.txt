@@ -211,6 +211,16 @@
         - .te：TE策略
         - .fc：文件安全上下文
         - .if：TE策略接口
+    - SELinux策略编译过程：.te/.if -①-> .mod （+ .fc） -②-> .pp -③-> cil -④-> policy.x
+        - ①：将.te/.if（类似c语言中的.c/.h）策略编译成.mod
+        - ②：.mod加上记载文件安全上下文的.fc编译成模块文件.pp
+            - 模块文件.pp可用pp命令查看，包含模块详细的语法（type/roletype/typeattributeset/allow/dontaudit/optional/filecon...）
+        - ③：.pp进一步编译成cil
+            - cil（Common Intermediate Language）：通用中间语言，介于多种高级策略语言（SELinux是其之一）与低级内核策略表示形式之间
+        - ④：将cil编译进policy.x
+        - 其中①②，④步骤皆有语法检测，有错误会失败退出
+            - ①②：检测模块内语法，如双重定义，allow主客体类型未定义...
+            - ④：检测模块间语法，如接口内类型定义无效，各模块语法冲突（allow和neverallow）...
     - SELinux策略如何写：
         - 首先在*/policy/modules/目录下创建自定义模块目录（mymodules）
         - 自定义模块目录下创建metadata.xml（<summary>自定义模块描述</summary>）
@@ -373,3 +383,26 @@
     - podman logs [NAME]：查看[NAME]容器的日志
     - podman top [NAME]：查看[NAME]容器的进程信息
     - podman rm [NAME]：删除[NAME]容器
+
+6. OpenSSH
+1）SSH（Secure SHell），安全外壳协议，一种加密的网络传输协议，进行远程控制或传输文件
+    - SSH协议的实现除了OpenSSH，还有轻量级的Dropbear（Dropbear只实现了SSH v2）
+2）OpenSSH是使用SSH通过计算机网络加密通讯的实现，比起Telnet，rcp等更加安全
+3）OpenSSH组件：
+    - ssh：远程控制（替代rlogin/Telnet）
+    - scp/sftp：远程传输文件（替代rcp）
+    - sshd：独立守护进程，SSH服务器
+    - ssh-keygen：用于认证，生成RSA/DSA密钥
+    - ssh-agent：跳过已认证的口令密码（ssh-agent启用进程在内存中保存私钥，ssh登录时向ssh-agent匹配）
+    - /etc/ssh/sshd_config：OpenSSH服务配置文件
+
+7. OpenSSL
+1）SSL（Secure Sockets Layer），安全套接字层协议，在传输通信协议（TCP/IP）上实现
+    - SSL建立在可靠的传输层协议TCP上，独立于应用层协议（应用层协议建立在SSL协议上）
+2）OpenSSL组件：
+    - openssl：密码工具
+        - Standard commands：标准命令
+        - Message Digest commands（dgst）：消息摘要命令
+        - Cipher commands（enc）：加密命令
+    - libssl.so：SSL协议库
+    - libcrypto.so：密码算法库

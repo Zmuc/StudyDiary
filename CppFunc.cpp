@@ -38,59 +38,6 @@ template < class T1,
 // T1，T2：int，string，vector<int>等数据类型
 
 
-/* ——————————————————————————————————————————————————
- * #include <string.h> */
-
-/* memchr：匹配内存区域中的字节 */
-void *memchr(const void *str, int c, size_t n);
-// str：指向要执行搜索的内存块
-// c：以int形式传递的值，但在每次字节搜索时是使用该值的无符号字符形式
-// n：要被分析的字节数
-// 返回值：指向匹配字节的指针，如果在给定的内存区域未出现字符，则返回 NULL
-
-/* memcmp：比较两个存储区的前n个字节 */
-int memcmp(const void *str1, const void *str2, size_t n);
-// str1：指向内存块1的指针
-// str2：指向内存块1的指针
-// n：要被比较的字节数
-// 返回值：值<0，则str1小于str2；值>0，则str1大于str2；值=0，则str1等于str2
-
-/* memcpy：存储区复制 */
-void *memcpy(void *dest, const void *src, size_t n);
-// dest：指向用于存储复制内容的目标数组，类型强制转换为 void* 指针
-// src：指向要复制的数据源，类型强制转换为 void* 指针
-// n：要被复制的字节数
-// 返回值：指向目标存储区str1的指针
-
-/* memmove：存储区复制（重叠内存块处理上比memcpy安全） */
-void *memmove(void *dest, const void *src, size_t n);
-// dest：指向用于存储复制内容的目标数组，类型强制转换为 void* 指针
-// src：指向要复制的数据源，类型强制转换为 void* 指针
-// n：要被复制的字节数
-// 返回值：指向目标存储区str1的指针
-
-/* memset：初始化内存 */
-void *memset(void *buffer, int n, int count)；
-// buffer：指针或者数组，是要初始化的内存的首地址；
-// n：初始化后的int数据；
-// count：buffer的初始化长度
-
-/* strcat, strncat：字符串连接 */
-char *strcat(char *dest, char *src);
-char *strncat(char *dest, char *src, size_t n);
-// dest：指向目标数组，该数组包含了字符串，且足够容纳追加后的字符串，包括额外的空字符
-// src：要追加的字符串（覆盖dest结尾处的'\0'）
-// n：要复制的字符数
-// 返回值：指向最终的目标字符串 dest 的指针
-
-/* strcpy, strncpy：字符串复制 */
-char *strcpy(char *dest, char *src);
-char *strncpy(char *dest, char *src, size_t n);
-// dest：指向用于存储复制内容的目标数组
-// src：要复制的字符串
-// n：要追加的最大字符数
-// 返回值：最终复制的字符串
-
 /* ————————————————————————————————————————————————————————————————————————————————————————————————————
  * stdio.h
  * ——————————————————————————————————————————————————————————————————————————————————————————————————— */
@@ -604,3 +551,146 @@ size_t wcstombs(char *str, const wchar_t *pwcs, size_t n);
 // pwcs：被转换的宽字符串
 // n：被转换的最大字节数
 // 返回值：转换和写入的字节数（失败：-1）
+
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————————
+ * string.h
+ * ——————————————————————————————————————————————————————————————————————————————————————————————————— */
+
+// ---------------------- 变量 && 宏 ----------------------
+
+size_t   // 无符号整数类型（unsigned int）
+
+NULL     // 空指针常量的值
+
+// ---------------------- 存储区 ----------------------
+
+/* memchr：存储区检索：检索存储区前n个字节中首次出现字符c的位置 */
+void *memchr(const void *mem, int c, size_t n);
+// mem：存储区/内存块
+// c：检索字符，以int形式传递的值（无符号字符）
+// n：检索的字节数
+// 返回值：指向匹配字节的指针（未找到：NULL）
+
+/* memset：存储区填充：将字符c填充到mem的前n个字节（初始化内存） */
+void *memset(void *mem, int c, size_t n);
+// mem：指向待填充的内存块
+// c：填充字符，以int形式传递的值（无符号字符）
+// n：填充的字节数
+// 返回值：指向存储区mem的指针
+
+/* memcmp：存储区比较：比较两个存储区的前n个字节 */
+int memcmp(const void *mem1, const void *mem2, size_t n);
+// mem1：存储区1
+// mem2：存储区2
+// n：比较的字节数
+// 返回值：<0（mem1 < mem2）；>0（mem1 > mem2）；=0（mem1 == mem2）
+
+/* memcpy：存储区复制：从某存储区复制n个字节到另一个存储区 */
+void *memcpy(void *dest, const void *src, size_t n);
+// dest：目标存储区（类型强制转换void*）
+// src：源存储区（类型强制转换void*）
+// n：复制的字节数
+// 返回值：指向目标存储区dest的指针
+
+/* memmove：存储区复制（类似memcpy，但重叠内存块处理更安全） */
+void *memmove(void *dest, const void *src, size_t n);
+// dest：目标存储区（类型强制转换void*）
+// src：源存储区（类型强制转换void*）
+// n：复制的字节数
+// 返回值：指向目标存储区dest的指针
+
+// ---------------------- 字符串检索 ----------------------
+
+/* strchr：字符串检索：检索字符串前n个字节中首次出现字符c的位置 */
+char *strchr(const char *str, int c);
+// str：字符串
+// c：检索字符，以int形式传递的值（无符号字符）
+// 返回值：指向首次匹配字符的位置（未找到：NULL）
+
+/* strrchr：字符串检索：检索字符串最后一次出现字符c的位置 */
+char *strrchr(const char *str, int c);
+// str：字符串
+// c：检索字符，以int形式传递的值（无符号字符）
+// 返回值：指向最后一次匹配字符的位置（未找到：NULL）
+
+/* strpbrk：字符串检索：检索str1字符串中首次出现str2中字符的位置 */
+char *strpbrk(const char *str1, const char *str2);
+// str1：字符串
+// str2：包含检索字符的字符串（列表）
+// 返回值：str1中首次匹配str2中字符的位置（未找到：NULL）
+
+/* strspn：字符串检索：检索str1字符串中首次未找到str2中字符的下标（位置-1？） */
+size_t strspn(const char *str1, const char *str2);
+// str1：字符串
+// str2：包含检索字符的字符串（列表）
+// 返回值：str1中首次未匹配字符的下标
+
+/* strcspn：字符串检索测距：检索str1字符串开头到首次匹配到str2中字符的距离 */
+size_t strcspn(const char *str1, const char *str2);
+// str1：字符串
+// str2：包含检索字符的字符串（列表）
+// 返回值：str1开头到首次匹配字符的距离
+
+// ---------------------- 字符串间 ----------------------
+
+/* strcpy, strncpy：字符串复制 */
+char *strcpy(char *dest, char *src);
+char *strncpy(char *dest, char *src, size_t n);
+// dest：目标数组/字符串
+// src：源字符串
+// n：复制的最大字符数
+// 返回值：最终复制的字符串
+
+/* strcat, strncat：字符串连接：将src追加到dest后面 */
+char *strcat(char *dest, char *src);
+char *strncat(char *dest, char *src, size_t n);
+// dest：目标数组（包含字符串，且足够容纳追加后的字符串，包括额外的空字符）
+// src：源字符串（覆盖dest结尾处的'\0'）
+// n：追加的最大字符数
+// 返回值：指向最终的目标字符串dest的指针
+
+/* strcmp, strncmp：字符串比较 */
+int strcmp(const char *str1, const char *str2);
+int strncmp(const char *str1, const char *str2, size_t n);
+// str1：字符串1
+// str2：字符串2
+// n：比较的最大字符数
+// 返回值：<0（str1 < str2）；>0（str1 > str2）；=0（str1 == str2）
+
+/* strcoll：字符串比较（LC_COLLATE：字符排序规则） */
+int strcoll(const char *str1, const char *str2);
+// str1：字符串1
+// str2：字符串2
+// 返回值：<0（str1 < str2）；>0（str1 > str2）；=0（str1 == str2）
+
+/* strxfrm：字符串转换（LC_COLLATE：字符排序规则） */
+size_t strxfrm(char *dest, const char *src, size_t n);
+// dest：目标数组/字符串（参数=0为NULL）
+// src：源字符串（根据LC_COLLATE转换）
+// n：转换的最大字符数
+// 返回值：被转换字符串的长度（不包含空结束字符）
+
+/* strstr：字符串子串查找 */
+char *strstr(const char *str1, const char *str2);
+// str1：被检索的字符串
+// str2：子串
+// 返回值：str1首次出现str2子串的位置（未找到：NULL）
+
+/* strtok：字符串分解 */
+char *strtok(char *str, const char *delim);
+// str：字符串
+// delim：包含分解字符的字符串（列表）
+// 返回值：被分解的首个子字符串（未找到：NULL）
+
+// ---------------------- 字符串其他 ----------------------
+
+/* strlen：字符串长度计算：计算字符串的长度（截止到空结束字符前） */
+size_t strlen(const char *str);
+// str：字符串
+// 返回值：字符串的长度（不包含空结束字符）
+
+/* strerror：字符串错误搜索：根据错误号搜索错误消息 */
+char *strerror(int errnum);
+// errnum：错误号（通常为errno）
+// 返回值：指向错误字符串的指针（描述错误号errnum）
