@@ -1,4 +1,144 @@
-1. ADB
+1.Android目录结构
+1）系统目录：
+    - /acct：系统回收站（删除的系统文件）
+    - /apex
+    - /bin -> /system/bin
+    - /bugreports -> /data/user_de/0/com.android.shell/files/bugreports
+    - /cache -> /data/cache：缓存
+    - /config
+    - /d -> /sys/kernel/debug
+    - /data：用户程序目录
+        - /data/app：apk文件
+        - /data/data：应用数据（com.xx.appname，包名命名子目录）
+    - /data_mirror
+    - /debug_ramdisk
+    - /dev：设备文件
+    - /etc -> /system/etc：系统配置文件
+    - /init -> /system/bin/init：
+    - /init.environ.rc
+    - /linkerconfig
+    - /lost+found
+    - /metadata
+    - /mnt：挂载点目录
+    - /odm
+    - /odm_dlkm
+    - /oem
+    - /postinstall
+    - /proc：运行时目录
+    - /product
+    - /sdcard -> /storage/self/primary
+    - /second_stage_resources
+    - /storage：存储设备
+    - /storage
+    - /sys：Linux内核文件目录
+    - /system：Android系统文件目录
+        - /system/apex
+        - /system/app：系统默认应用（不可删除）
+        - /system/bin：可执行的linux指令文件（ELF）
+        - /system/build.prop
+        - /system/etc：配置文件
+        - /system/fonts：字体文件
+        - /system/framework：JAVA API
+        - /system/lib：核心功能类库（C/C++）
+        - /system/media：媒体文件
+        - /system/priv-app
+        - /system/product -> /product
+        - /system/system_ext -> /system_ext
+        - /system/usr
+        - /system/vendor -> /vendor
+        - /system/xbin：开发人员linux指令文件（ELF）
+    - /system_ext
+    - /vendor：厂商相关
+    - /vendor_dlkm
+
+
+2.Android权限
+1）AndroidManifest.xml注册
+2）权限类别：
+    - 正常权限（PROTECTION_NORMAL）：Android在处理正常权限时并不会提示用户（不涉及隐私且无害），而用户也没有办法取消这些正常权限
+    - 签名权限（PROTECTION_SIGNATURE）：签名相同的应用可进行安全的数据共享
+    - 危险权限（PROTECTION_DANGEROUS ）：提示用户授权
+3）权限处理：检测权限（checkSelfPermission()检测危险权限，返回PERMISSION_GRANTED/PERMISSION_DENIED） -> 请求权限（PERMISSION_DENIED） -> 处理权限响应
+
+3.Android沙盒：
+1）UID -> AID：Android应用程序在安装时被赋予独特的用户标识（实际上还是UID），应用程序+Dalvik虚拟机运行在独立的进程空间（实现隔离）
+2）共享UID（Shared UserId）：同一开发者，存在信任关系，可运行在同一进程空间
+
+4.应用程序签名：
+识别开发者与应用程序的信任关系，有签名才能安装，签名相同可替换，不同则作为新的应用程序安装
+
+5.Android Framework：
+
+6.Android架构：
+1）结构
+    - 应用程序层（App；System App）：桌面，闹铃，设置，日历，电话，短信等系统应用
+    - 应用程序框架层（JAVA API Framework）：应用程序层APIs
+        - 可扩展视图：构建应用程序，包含列表，网格，文本框，按钮
+        - 内容提供器：应用程序可访问其他应用程序的进程
+        - 资源管理器：提供非代码资源（本地字符串，图形，布局文件）的访问
+        - 通知管理器：应用程序可在状态栏自定义通知
+        - 活动管理器：管理应用程序生命周期，并提供常用的导航回退功能
+    - 系统运行库/环境层（Native C/C++；Android Runtime）
+        - Native层：C/C++核心库
+            - libc（来自BSD的标准c库）
+            - 媒体库
+        - Surface Manager
+               - LibWebCore
+            - SGL
+            - 3D libraries
+            - FreeType
+            - SQLite：轻量级数据库
+        - Android Runtime：JAVA核心库
+            - Dalvik虚拟机/ART
+            - Core Libararies
+    - Linux核心层（HAL；Linux Kernel）
+        - 硬件抽象层（HAL，Hardware Abstraction Layer）：为应用程序框架层提供硬件显示（Audio，Bluetooth）
+        - 内核层（Linux Kernel）：基础 && 核心
+
+7.Android Binder
+1）Android系统中进程间通讯（IPC）之一，C/S架构
+2）Binder架构：
+    - Framework层：Client端，Server端，ServiceManager（管理系统服务）
+    - JNI层：调用Native层的Binder架构（JAVA -> C/C++）
+    - Native层：ioctl调用驱动
+    - 内核层：Binder驱动 
+3）Binder机制：
+    - Server端通过ServiceManager注册：
+        - ServiceManager向Binder驱动全局链表binder_procs插入Server端信息
+        - ServiceManager向自己的svcinfo列表缓存注册服务
+    - Client端通过ServiceManager查询：
+        - ServiceManager向自己的svcinfo列表查询
+        - ServiceManager返回Server端BinderProxy（代理）
+    - Client端通过BinderProxy发送请求：
+        - BinderProxy将请求发给ServiceManager
+        - ServiceManager通过共享内存，用内核copy_from_user()将请求拷入内核空间
+        - Client端进入等待状态
+        - Binder驱动向binder_procs Server端todo队列插入请求
+        - Binder驱动执行完成后，用内核copy_to_user()将结果拷入用户空间
+        - ServiceManager唤醒Client端并响应结果
+
+8.Zygote：孵化新进程
+init -> zygote -> SystemServer/Dalviks
+
+
+9.SEAndroid：
+1）App权限：
+    - untrusted_app：不信任/第三方App，没有Android平台签名，没有system权限
+    - platform_app：平台App，有Android平台签名，没有system权限
+    - system_app：系统App，有Android平台签名，有system权限
+2）seapp_contexts：App规则，由user，seinfo决定domain，type
+    - user：App进程USER
+        - system：系统App，一般为system_app
+        - u0_axx：非系统App，一般为platform_app或untrusted_app
+    - seinfo：App签名
+        - mac_permissions.xml：定义签名和seinfo的映射（signature="@PLATFORM"->value="platform"）
+        - Android.mk：LOCAL_CERTIFICATE即签名，再根据mac_permissions.xml判定seinfo，默认为default
+3）service_contexts：服务标签
+4）property_contexts：系统属性标签
+5）genfs_contexts：
+6）file_contexts
+
+10. ADB
 1）ADB（Android Debug Bridge），Android调试桥，设备通信及操作
 2）ADB组成：
     - adb：本地开发环境，包含adb的client及server端
