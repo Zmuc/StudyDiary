@@ -1,0 +1,102 @@
+1.正则表达式
+regex = re.compile('^\d{4}_\d{2}.suffix$')
+# import re
+# re.compile：正则表达式
+# ^：开头标识
+# $：结尾标识
+# \d{x}：x位数字
+
+# 路径切割
+re.split('/', re.split(' ', " ".join(re.findall(r'\d+/(.*?)/xxx', path)))[0])
+# import re
+# re.findall(r'\d+/(.*?)/xxx', path)：path路径中含有匹配字段提取出来（[全数字结尾的目录/不定层所有目录/xxx开口的目录或文件]，因为path是路径，中间只有可能是目录），返回列表
+# re.split(' ', *)[0]：取列表第一项[0]元素，对于本例主要进行列表转换成字符串
+# re.split('/', *)：再将字符串（匹配上的路径）切割并返回列表，元素依次代表一层目录名
+
+2.遍历并查找文件
+for root,dirs,files in os.walk('/home'):
+    for file in files:
+        if regex.match(file):
+            path = os.path.join(root, file)
+# import os, re（推荐多行import）
+# os.walk：将/home目录下内容读取为root（/home），dirs（/home下的第一层dir目录），files（/home下的第一层file文件），for循环可递归多级目录
+# dirs/files：相对root路径下的所有第一层目录/文件，是列表，可再次遍历
+# regex.match(file)：通过regex定义的正则表达式匹配文件
+# os.path.join(root, file)：拼接文件绝对路径（root + '/' + file）
+
+3.json处理
+with open(path, "r") as f:
+    json_list = json.load(f)
+    for json_item in json_list:
+        json_a = json_item['a']
+        json_ab = json_a['b']
+# import json
+# json.load：将打开的json文件描述符（f）导入列表（json_list）
+# 遍历处理json（类似键值对，也可能含有嵌套）：a为json_item项的键，json_a为键a的值（b/json_ab是json_a中嵌套的键值对）
+
+4.列表遍历（组合索引）
+for index, element in enumerate(list):
+# enumerate：将列表（list）组合索引并遍历
+# index：索引，从0（第一项）开始递增
+# element：list列表中，第index个元素（对应index）
+
+5.格式化
+"{:.3f}".format(element)
+# 将element格式化为""内容，3f即3位浮点数
+
+6.文件指定过滤
+f_src = open(src, 'r', encoding='utf-8')
+f_dest = open(dest, 'w', encoding='utf-8')
+try:
+    for line in f_src.readlines():
+        if line == '\n':
+            line = line.strip("\n")
+        if line.startswith('xxx'):
+            continue
+        f_dest.write(line)
+finally:
+    f_src.close()
+    f_dest.close()
+# open：将src/dest（文件路径）打开，返回文件描述符f_src/f_dest
+# readlines：按行读取，若不过滤（过滤方式：strip或continue，要么写NULL，要么继续处理下一行）则写入目标文件
+# try/catch/finally：错误处理机制，分别是错误测试（必须，入口）/捕获异常/错误结尾
+
+7.多维数组
+mult_array = np.zeros((4, 5, 6))
+# import numpy as np
+# np.zeros：创建多维数组并初始化为0
+# mult_array[1, 2, 3]：第一维数组中第2个（索引+1）元素（第二维数组）；对应第二维数组中第3个元素（第三位数组）；对应第三维数组中第4个元素（非多维数组），即最终目标
+
+8.List -> CSV
+f = open(os.path.join(path_dir, file), "w+", newline='')
+csv_title = ['Column1 Title', 'Column2 Title', ...]
+try:
+    writer = csv.writer(f)
+    writer.writerow(csv_title)
+    for i in range(len(list)):
+        writer.writerow(list[i])
+finally:
+    f.close()
+# import csv
+# csv.writer：将打开文件描述符转成csv写模式
+# writerow：一行行写入（一行是一个元素，csv是逗号分隔）
+
+9.CSV -> List
+f = open(path, 'r')
+csv_list = csv.reader(f)
+# import csv
+# csv.reader：将csv文件读成列表
+
+10.CSV -> Dict
+f = open(path, 'r')
+csv_reader = csv.reader(f)
+csv_list = list(csv_reader) 
+csv_dict = {}
+for list_item in csv_list:
+    for index in range(len(list_item)):
+        if index == 0:
+            continue
+        csv_dict.setdefault(list_item[0], []).append(list_item[index])
+# import csv
+# for：csv_list是双列表，第一层for处理列表每个元素（元素也是列表）。第二层for处理得到元素的列表每个元素
+# csv_dict.setdefault(key, []).append(value)：设置键值对（值是列表），即将第二层处理列表的某个元素作为键，其余元素组合成列表作为值
