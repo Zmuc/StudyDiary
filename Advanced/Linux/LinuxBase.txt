@@ -190,7 +190,51 @@
         - strip：$(strip text)，去掉text字符串中多余的空格
         - wildcard：$(wildcard pattern)，支持以*作为通配符
 
-9. Linux文件系统
+9. Cmake
+1）跨平台编译/安装工具
+2）CMakeLists.txt：
+    - cmake_minimum_required(VERSION 2.8)：cmake最低兼容版本检查>=2.8
+    - set(A b)：将A设置为b
+        - set(PROJECT MyTest)：项目名称MyTest
+        - set(CMAKE_C_STANDARD 99)：声明c99
+        - set(CMAKE_CXX_STANDARD 11)：声明c++11
+        - set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pipe -std=c99")：c编译选项
+        - set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++17 -Wall")：c++编译选项
+        - set(CMAKE_BUILD_TYPE Debug|Release)：编译类型
+            - Debug：CMAKE_C_FLAGS_DEBUG -> CMAKE_C_FLAGS（CXX同理）
+            - Release：CMAKE_C_FLAGS_RELEASE  -> CMAKE_C_FLAGS（CXX同理）
+        - set(PRJ_EXEC MyTest)：可执行文件
+        - set(PRJ_EXEC_SRCS src/my_test.c)：可执行文件的源码
+    - find_package(pkg QUIET|REQUIRED)：引入外部依赖包
+        - pkg：依赖包
+            - Module：官方，Find<pkg>.cmake
+            - Config：非官方，自行编译安装支持cmake的包
+                - 下载源码
+                - cmake -H. -Bbuild -G "Unix Makefiles"
+                - cmake --build build
+                - cmake --build build --target install
+        - QUIET：无输出
+        - REQUIRED：必须的包
+    - add_definitions(-DDEBUG -DREAL_COOL_ENGINEER)：添加全局宏定义
+    - include_directories(INCLUDE)：include头文件目录
+    - link_directories(LIBRARY)：lib库文件目录
+    - add_executable(xxx.exe xxx1.c src/xxx2.c)：编译源文件xxx1.c，src/xxx2.c为可执行文件xxx.exe
+    - target_link_libraries(xxx.exe lib1 lib2)：链接lib1.so，lib2.so到可执行文件xxx.exe
+    - install(TARGETS xxx.exe)：安装
+    - add_subdirectory(subdir)：创建subdir
+    - message：执行打印
+3）基础模板：
+    - cmake_minimum_required(VERSION 2.8)                                         // Cmake version <=
+    - set(PROJECT MyTest)                                                         // Project Name
+    - set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -std=c++17 -Wall -DLINUX") // Cmake Flags
+    - include_directories(${PROJECT_SOURCE_DIR}/include)                          // Include Dir
+    - set(PRJ_EXEC MyTest)                                                        // Exec And Src（Exec）
+    - set(PRJ_EXEC_SRCS src/my_test.c)                                            // Exec And Src（Src）
+    - add_executable(${PRJ_EXEC} ${PRJ_EXEC_SRCS})                                // Compile Compile
+    - target_link_libraries(${PRJ_EXEC} pthread)                                  // Runtime Dependency
+    - install(TARGETS ${PRJ_EXEC})                                                // Install
+
+10. Linux文件系统
 1）Linux文件系统是基于磁盘的
     - 磁盘开始区域是MBR（主引导记录，系统启动引导），剩余空间用来存储分区（partition）和分区表（记录分区信息）
     - Linux分区（partition）：|boot block|super block|inode block|data block|
@@ -215,7 +259,7 @@
     - tmpfs：基于内存的虚拟文件系统，用来管理/tmp，也可用于swap交换空间
     - NFS（Network File System）：用来实现不同主机间文件共享的一种网络服务（通过挂载使用远程共享的资源）
 
-10. Linux内存管理
+11. Linux内存管理
 1）内存（Memory）也称主存储器，用于暂时存放CPU运算的数据，也与外存（辅助存储器）数据交互
 2）虚拟内存管理：
     - 每个进程都分配了4GB的虚拟地址空间，互不干涉（32位系统为例，2^32=4G）
@@ -285,7 +329,7 @@
         - 段号/段名 + 段内地址/段内偏移量
         - 读，写，执行
 
-11. Linux I/O
+12. Linux I/O
 1）I/O设备：都被当做特殊文件
     - 字符设备（c）：
         - 提供连续数据流，以字节/字符方式被有序访问
@@ -316,7 +360,7 @@
     - X86：I/O映射方式（I/O-mapped）
     - ARM：内存映射方式（Memory-mapped）
 
-12. Linux文件
+13. Linux文件
 1）文件的底层实现方式相关：
     - 文件类型
     - 所属文件系统
@@ -349,7 +393,7 @@
     - Capability规则：
         - 对root行为进行细粒度控制，相当于扩充了RWX行为
 
-13. 守护进程
+14. 守护进程
 1）实现：
     - 子进程创建（fork），父进程退出（exit），父进程退出后子进程的父变为init进程（PID=1）
     - 子进程中创建新会话（setsid），使子进程独立（不受fork父进程的会话组，进程组等影响）
