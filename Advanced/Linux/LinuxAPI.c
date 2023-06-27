@@ -754,3 +754,76 @@ struct msqid_ds {
     pid_t           msg_lrpid;    // 上次msgrcv()的PID
 };
 // #include <bits/msq.h>
+
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————————
+ * socket
+ * ——————————————————————————————————————————————————————————————————————————————————————————————————— */
+
+/* socket：创建socket描述符并唯一标识 */
+int socket(int domain, int type, int protocol);
+// #include <sys/socket.h>
+// domain：协议族（AF：Address Family；PF：Protocol Family）
+//     - AF_INET：IPv4
+//     - AF_INET6：IPv6
+//     - AF_LOCAL/AF_UNIX：Unix
+// type：套接字类型，即数据传输方式
+//     - SOCK_STREAM：流
+//     - SOCK_DGRAM：数据报
+// protocol：传输协议
+//     - 0：根据domain和type自动选择protocol
+//     - IPPROTO_TCP：TCP协议
+//     - IPPTOTO_UDP：UDP协议
+// 返回值：socket描述符（也是文件描述符）
+
+/* bind：绑定socket与协议地址（IP + 端口号） */
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+// #include <sys/socket.h>
+// sockfd：待绑定的socket描述符
+// addr：指向绑定给sockfd的协议地址
+//     - sockaddr_in：AF_INET
+//     - sockaddr_in6：AF_INET6
+//     - sockaddr_un：AF_LOCAL/AF_UNIX
+// addrlen：addr地址的长度
+// 返回值：0（失败：-1）
+
+/* listen：服务端，监听socket */
+int listen(int sockfd, int backlog);
+// #include <sys/socket.h>
+// sockfd：待监听的socket描述符（作为服务端）
+// backlog：相应socket可以排队的最大连接个数
+// 返回值：0（失败：-1）
+
+/* connect：客户端，连接socket */
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+// #include <sys/socket.h>
+// sockfd：待连接的socket描述符（作为客户端）
+// addr：服务端的sockfd的协议地址
+// addrlen：addr地址的长度
+// 返回值：0（失败：-1）
+
+/* accept：服务端，接收socket的连接（connect），并返回用于通信的socket描述符 */
+int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+// #include <sys/socket.h>
+// sockfd：待接收连接的socket描述符（作为服务端）
+// addr：客户端的sockfd的协议地址
+// addrlen：addr地址的长度
+// 返回值：socket描述符（失败：-1）
+
+/* send：TCP发送数据 */
+ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// buf：缓冲区（发送数据）
+// len：长度（发送数据）
+// flags：信息模式（默认0：阻塞式）
+// 返回值：发送的数据大小（=0，超时/close；<0，失败/errno为EINTR|EWOULDBLOCK|EAGAIN时连接正常）
+
+/* recv：TCP接收数据 */
+ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// buf：缓冲区（接收数据）
+// len：长度（接收数据）
+// flags：信息模式（默认0：阻塞式）
+// 返回值：接收到的数据大小（=0，超时/close；<0，失败/errno为EINTR|EWOULDBLOCK|EAGAIN时连接正常）
