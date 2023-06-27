@@ -1,0 +1,36 @@
+1. SOME/IP
+1）SOME/IP（Scalable service-Oriented middlewarE over IP），汽车相关协议
+2）传输层之上的应用层（OSI为会话层）通信协议，面向服务的中间件（独立的系统软件/服务），相比较CAN能降低总线负载率
+3）核心是服务，定义了Server端和Client端
+    - Server端：提供服务，1个服务仅1个，包含>=0个服务接口
+    - Client端：调用服务，1个服务有N个
+    - 服务接口：
+        - Method：
+            - R&R Method：Request请求必须Response应答，用于短数据传输，远程算法调用/设备控制
+            - F&F Method：Request请求不须Response应答，用于发送Event
+        - Event：Server端向Client端（已定阅）发送通知
+        - Field：
+            - Notifier：通知，Client端订阅服务后，向Server端发送数据
+            - Getter：获取，Client端向Server端请求数据
+            - Setter：设置，Client端修改Server端的数据
+4）SOME/IP数据：
+    - 报头：Message ID（32：Service ID标识服务16，Method ID标识方法16）；
+            报文长度（32，自Request ID至结束）；
+            Request ID（32：Client ID区分不同客户端16，Session ID区分同一个客户端多次调用16）；
+            协议版本（8，固定0x01），服务接口版本（8），报文类型（8），返回码（8）；
+    - 数据：不定长
+    - 报文类型（8，Message Type）：
+        - REQUEST：期待响应的请求
+        - REQUEST_NO_RETURN：不期待响应的请求
+        - RESPONSE：响应消息
+        - NOTIFICATION：事件通知（包含Event/Field）
+        - ERROR：报错消息
+5）SOME/IP服务发现（SD，Service Discovery），用于定位服务实例、检查服务实例状态及管理发布/订阅
+    - 只能通过UDP实现
+    - SD报文解析：
+        - Message ID：固定为0xFFFF8100
+        - Request ID：固定为0x0000
+        - 协议版本：固定为0x01
+        - 服务接口版本：固定为0x01
+        - 报文类型：固定为0x02
+        - 返回码：固定为0x00
