@@ -827,3 +827,60 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags);
 // len：长度（接收数据）
 // flags：信息模式（默认0：阻塞式）
 // 返回值：接收到的数据大小（=0，超时/close；<0，失败/errno为EINTR|EWOULDBLOCK|EAGAIN时连接正常）
+
+/* sendto：UDP发送数据 */
+ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// buf：缓冲区（发送数据）
+// len：缓冲区长度（发送数据）
+// flags：信息模式（默认0：阻塞式）
+// dest_addr：发送的目的sockfd的协议地址
+// addrlen：长度（dest_addr）
+// 返回值：发送的数据大小（失败：-1）
+
+/* recvto：UDP接收数据 */
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// buf：缓冲区（接收数据）
+// len：缓冲区长度（接收数据）
+// flags：信息模式（默认0：阻塞式）
+// src_addr：接受的源sockfd的协议地址
+// addrlen：长度（src_addr）
+// 返回值：接收到的数据大小（失败：-1）
+
+/* sendmsg：发送数据 */
+ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// msg：信息
+// flags：信息模式（默认0：阻塞式）
+// 返回值：发送的数据大小（失败：-1）
+
+/* recvmsg：接收数据 */
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);
+// #include <sys/socket.h>
+// sockfd：socket描述符（作为服务器时，为accept返回）
+// msg：信息
+// flags：信息模式（默认0：阻塞式）
+// 返回值：接收到的数据大小（失败：-1）
+
+/* msghdr：缓冲区结构体 */
+struct iovec {
+    void    *iov_base;   // 缓冲区首地址
+    size_t   iov_len;    // 缓冲区长度
+};
+#include <sys/uio.h>
+
+/* msghdr：传输信息结构体 */
+struct msghdr {
+    void         *msg_name;        // UDP中发送/接受方的协议地址（TCP无需指定，为NULL）
+    socklen_t     msg_namelen;     // 长度（msg_name）
+    struct iovec *msg_iov;         // 缓冲区
+    size_t        msg_iovlen;      // 缓冲区长度（msg_iov）
+    void         *msg_control;     // 辅助数据
+    size_t        msg_controllen;  // 辅助数据长度（msg_control）
+    int           msg_flags;       // 信息模式（sendmsg忽略）
+};
+#include <sys/socket.h>
