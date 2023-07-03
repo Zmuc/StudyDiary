@@ -1,0 +1,18 @@
+1. 枚举二进制取值
+enum ModeType {
+    mode_none = 1 << 0,   // 0000 0001
+    mode_read = 1 << 1,   // 0000 0010
+    mode_write = 1 << 2,  // 0000 0100
+}
+
+enum ModeType {
+    // Decimal         // Binary
+    mode_none = 0,     // 00000000
+    mode_read = 1,     // 00000001
+    mode_write = 2,    // 00000010
+    mode_execute = 4   // 00000100
+}
+// Label                          Binary = Decimal
+//     - mode_read:               00000001 = 1
+//     - mode_write:              00000010 = 2
+//     - mode_read | mode_write:  00000011 = 3
