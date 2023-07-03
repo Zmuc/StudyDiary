@@ -387,11 +387,55 @@
         - r（read）：读，读取文件/浏览目录
         - w（write）：写，增删改文件内容/增删改移动目录下文件
         - x（execute）：执行，执行文件/进入目录
-        - s：x->s，对应SUID/SGID/SBIT，执行时（x），将进程权限（EUID）设置成文件属主UID
+        - s：x->s，对应SUID/SGID
+        - t：x->t，对应SBIT
+        - S/T：当s/t替代位置本身不具有x权限时，大写区分
+    - SUID/SGID/SBIT：
+        - SUID（s）：仅对二进制及二进制执行过程有效，执行者若对该文件有执行权限，则执行者将具有所有者的权限
+        - SGID（s）：作用二进制类似SUID，作用目录可使目录下的文件属于这个目录所在的组
+        - SBIT（t）：作用目录可使用户在目录下创建文件，仅有用户与root才可删除
     - ACL（Access Control List）规则：
         - 设定用户针对文件的权限，相当于扩充UGO用户组
     - Capability规则：
         - 对root行为进行细粒度控制，相当于扩充了RWX行为
+            - CAP_AUDIT_CONTROL：检查或更改审计日志过滤状态/规则
+            - CAP_AUDIT_READ：允许通过multicast netlink套接字读取审计日志
+            - CAP_AUDIT_WRITE：允许将记录写入内核审计日志
+            - CAP_BLOCK_SUSPEND：允许阻止系统挂起
+            - CAP_CHOWN：允许修改文件所有者的权限
+            - CAP_DAC_OVERRIDE：忽略文件的DAC访问控制
+            - CAP_DAC_READ_SEARCH：忽略文件读及目录搜索的DAC访问控制
+            - CAP_FOWNER：忽略文件属主ID必须和进程用户ID相匹配的限制
+            - CAP_FSETID：允许设置文件的setuid位
+            - CAP_IPC_LOCK：允许锁定共享内存片段
+            - CAP_IPC_OWNER：忽略IPC所有权检查
+            - CAP_KILL：允许对不属于自己的进程发送信号
+            - CAP_LEASE：允许修改文件锁的FL_LEASE标志
+            - CAP_LINUX_IMMUTABLE：允许修改文件的IMMUTABLE和APPEND属性标志
+            - CAP_MAC_ADMIN：允许更改MAC配置或状态
+            - CAP_MAC_OVERRIDE：覆盖MAC(Mandatory Access Control)
+            - CAP_MKNOD：允许使用mknod()系统调用
+            - CAP_NET_ADMIN：允许执行网络管理任务
+            - CAP_NET_BIND_SERVICE：允许绑定到小于1024的端口
+            - CAP_NET_BROADCAST：允许网络广播和多播访问
+            - CAP_NET_RAW：允许使用原始套接字（raw socket）
+            - CAP_SETGID：允许改变进程的GID
+            - CAP_SETFCAP：允许为文件设置任意的capabilities
+            - CAP_SETPCAP：允许向其他进程转移能力以及删除其他进程的能力
+            - CAP_SETUID：允许改变进程的UID
+            - CAP_SYS_ADMIN：允许执行系统管理任务，如加载或卸载文件系统、设置磁盘配额等
+            - CAP_SYS_BOOT：允许重启系统
+            - CAP_SYS_CHROOT：允许使用chroot()系统调用
+            - CAP_SYS_MODULE：允许加载/卸载内核模块
+            - CAP_SYS_NICE：允许提升优先级及设置其他进程的优先级
+            - CAP_SYS_PACCT：允许执行进程的 BSD 式审计
+            - CAP_SYS_PTRACE：允许跟踪任何进程
+            - CAP_SYS_RAWIO：允许直接访问/devport、/dev/mem、/dev/kmem及原始块设备
+            - CAP_SYS_RESOURCE：忽略资源限制
+            - CAP_SYS_TIME：允许改变系统时钟
+            - CAP_SYS_TTY_CONFIG：允许配置TTY设备
+            - CAP_SYSLOG：允许使用syslog()系统调用
+            - CAP_WAKE_ALARM：允许触发一些能唤醒系统的东西(比如CLOCK_BOOTTIME_ALARM计时器)
 
 14. 守护进程
 1）实现：
