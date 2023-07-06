@@ -488,3 +488,83 @@
     - Little-Endian：小端，低位字节排放在内存的低地址端，高位字节排放在内存的高地址端
     - Big-Endian：大端，高位字节排放在内存的低地址端，低位字节排放在内存的高地址端
 2）网络字节序：4个字节的32bit值以下面的次序传输：首先是0～7bit，其次8～15bit，然后16～23bit，最后是24~31bit（大端字节序的传输次序）
+
+16. cgroup
+1）cgroup（control group，控制组）是Linux内核提供的功能，用来限制、控制与分离一个进程组的资源（如CPU、内存、网络、磁盘I/O等百分比分配）
+2）cgroup组成：分层组织进程的机制，沿层次结构以受控的方式分配系统资源
+    - core：负责分层组织过程
+    - controller：负责沿层次结构分配特定类型的系统资源
+3）核心文件：
+    - cgroup.type[单值]：rw，存在于非根cgroup，取值如下：
+        - domain：正常的有效域cgroup
+        - domain threaded：线程子树根的线程域cgroup
+        - domain invalid：无效的cgroup
+        - threaded：线程cgroup，线程子树
+    - cgroup.procs[换行分隔]：ALL，rw，每行列出属于cgroup的进程的PID（不是有序的，如果进程迁移到另一个cgroup，相同的PID可能会出现不止一次）
+    - cgroup.controllers[空格分隔]：ALL，r，显示cgroup可用的所有控制器
+    - cgroup.subtree_control[空格分隔]：ALL，rw，初始为空，如果一个控制器在列表中出现不止一次，最后一个有效（当指定多个启用"+"和禁用"-"操作时，要么全部成功，要么全部失败）
+    - cgroup.events[配置项]：r，存在于非根cgroup：
+        - populated：cgroup及其子节点中包含活动进程，值为1；无活动进程，值为0
+        - frozen：cgroup被冻结，值为1；未被冻结，值为0
+    - cgroup.threads[换行分隔]：ALL，rw，每行列出属于cgroup的线程的TID（不是有序的，如果线程迁移到另一个cgroup，相同的TID可能会出现不止一次）
+    - cgroup.max.descendants[单值]：rw，最大允许的cgroup子节点数量
+    - cgroup.max.depth[单值]：rw，当前节点最大允许的树深度
+    - cgroup.stat：r
+        - nr_descendants：可见的子cgroup的总数
+        - nr_dying_descendants：垂死的（被用户删除即将被系统销毁）子cgroup的总数
+    - cgroup.freeze[单值]：r，存在于非根cgroup，默认值为0，当值为1时，会冻结cgroup及其所有子节点cgroup，会将相关的进程关停并且不再运行（冻结cgroup需要一定的时间，当动作完成后，cgroup.events控制文件中的 “frozen” 值会更新为“1”，并发出相应的通知；cgroup冻结状态不会影响任何cgroup树操作，如创建，删除）
+    - cgroup.kill[单值]：rw，存在于非根cgroup，唯一允许值为1，当值为1时，会将cgroup及其所有子节点中的cgroup杀死（SIGKILL），用于将一个cgroup树杀掉，防止叶子节点迁移
+4）cgroup的归属和迁移：
+    - 归属：每个进程都属于一个cgroup，且该进程所有的线程都属于同一个cgroup
+    - 迁移：一个进程可以从一个cgroup迁移到另一个cgroup，迁移不会影响现有的子进程属于的cgroup，存在手段但不常用
+    - 挂载：cgroupfs，展示cgroup的层级
+        - memory_recursiveprot：递归地将memory.min/memory.low应用于整个子树，无需显式向下传播到叶子节点的cgroup中，且子数内叶子节点可自由竞争
+        - memory_localevents：只能挂载时设置/通过init命名空间重新挂载来修改，用当前cgroup的数据来填充memory.events，否则默认计数所有子树
+        - nsdelegate：只能挂载时设置/通过init命名空间重新挂载来修改，将cgroup命名空间视为委派边界
+    - 委派：将cgroup的某些子树的管理传递给非特权用户
+        - 设置挂载选项nsdelegate
+        - 授权用户对目录及其cgroup.procs（用于迁移）/cgroup.threads/cgroup.subtree_control的写权限
+5）cgroups：树状结构的多个控制组，cgroup资源是自上而下分布约束（为避免父子节点竞争，进程总在叶子节点上）
+    - 资源限制：cgroups可以以树状结构来嵌套式限制资源
+    - 优先级：发生资源竞争时，优先保障哪些进程的资源
+    - 审计：监控及报告资源限制及使用
+    - 控制：控制进程的状态（启动/停止/挂起）
+
+17. Linux Namespace：
+1）内核级别隔离系统资源的方法，通过将系统的全局资源放在不同的Namespace中，来实现资源隔离的目的
+    - Mount：隔离文件系统挂载点[CLONE_NEWNS]
+        - 不同Mount Namespace的进程拥有不同挂载点，也拥有不同文件系统
+        - 进程在创建Mount Namespace时，会把当前的文件结构复制给新的Namespace
+        - 挂载传播：定义了挂载对象之间的关系
+            - 共享关系[MS_SHARED]：一个挂载对象的挂载事件会跨Namespace共享到其他挂载对象
+            - 从属关系[MS_SLAVE]: 传播的方向是单向的，即Master->Slave方向
+            - 私有关系[MS_PRIVATE]: 不同Namespace的挂载事件是互不影响的（默认选项）
+            - 不可绑定关系[MS_UNBINDABLE]: 不可绑定的私有挂载，不能执行挂载操作
+        - 绑定挂载：将一个目录挂载，而不是文件设备，类似硬链接
+    - UTS：隔离主机名和域名信息[CLONE_NEWUTS]
+        - 隔离的是struct utsname里的nodename/domainname，不同UTS Namespace可以拥有独立的主机名和域名
+        - 主机名+域名可代表IP地址，同一主机上不同的容器的网络访问就可能因为UTS Namespace出问题
+    - IPC：隔离进程间通信[CLONE_NEWIPC]
+        - 作用于SystemV IPC和Posix消息队列，用标识符来区分不同的消息队列
+        - 相同的标识符在不同的IPC Namepspace中代表不同的通信介质（如信号量、消息队列和共享内存）
+    - PID：隔离进程的ID[CLONE_NEWPID]
+        - 对进程PID重新标号，即不同的PID Namepspace下可以有同一个PID
+        - PID Namepspace呈树状结构，最顶层是系统初始化创建的Root PID Namespace（PID Namepspace之间存在Parent与Child关系）
+        - 父节点可以看到子节点的进程并可以通过信号产生影响，但子节点无法看到父节点的进程
+            - ps从/proc中读取进程信息，导致子节点可以通过ps看到父节点的进程，若要屏蔽父节点，需要重新挂载/proc文件系统
+        - 新创建的PID Namespace中的第一个进程PID为1，类似init进程
+            - 父节点PID Namespace的进程有权终止子节点PID Namespace中的进程
+            - 新创建的PID Namespace中的init进程，会接管孤儿进程，清除僵尸进程
+    - Network：隔离网络资源[CLONE_NEWNET]
+        - 网络资源包括网络设备（网卡/网桥）、IPV4/IPV6协议栈、路由表、防火墙、端口等
+        - 物理网络设备最多只存在于一个Network Namespace中，如果该Network Namespace被销毁，设备回到Root Network Namespace（非回到Parent）
+        - 打通不同Network Namespace间的通信：创建vnet pair虚拟网络设备对，类似管道，一端传入，另一端传出
+    - User：隔离用户和用户组的ID[CLONE_NEWUSER]
+        - 不同User Namespace之间的用户和用户组的ID可以不同，一个非特权用户（UID/GID != 0）在User Namespace中可以拥有root权限（UID/GID = 0）
+        - User Namespace拥有的一系列权限，在Parent User Namespace中是没有的
+        - User Namespace刚创建时，通过/proc/$pid/uid_map与/proc/$pid/gid_map映射
+        - User Namespace除了隔离用户和用户组ID之外，还对Capability隔离和控制（添加/删除）
+2）Namespace涉及接口clone()/setns()/unshare()，可指定参数
+    - clone()：创建一个独立Namespace的进程（flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC;）
+    - setns()：将进程加入已存在的Namepspace（本进程PID Namespace不变，子进程加入，Tip：PID是常量，进程创建时就已确认）
+    - unshare()：将进程从当前Namepspace脱离，并加入新的Namepspace（本进程PID Namespace不变，子进程加入）
