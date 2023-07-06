@@ -79,7 +79,7 @@
 4）LD_LIBRARY_PATH：动态库搜索路径
 5）HOME：用户的主工作目录/登录进入的默认目录，即~
 
-5. 常用的系统文件/目录（持续更新...）
+5. 常用的系统文件/目录
 1）/usr：共享资源（Unix Shared Resources）目录
     - /usr/bin：系统用户使用的命令
     - /usr/sbin：超级用户使用的命令（较高级管理/系统守护程序）
@@ -123,6 +123,31 @@
     - /dev/fb0（c）：FrameBuffer（屏幕每个点映射成一段线性内存空间）
     - /dev/random/urandom（c）：随机数设备
 7）/proc：进程（Processes）目录（/proc是伪文件系统，即虚拟文件系统，是系统内存的映射）
+    - /proc/$pid：进程相关
+        - /proc/$pid/mountinfo：挂载信息，|mount ID|parent mount ID|major:minor|root|mount point|mount options|optional fields|separator|filesystem type|mount source|super options|
+            - mount ID：mount操作唯一的ID
+            - parent mount ID：父挂载的mount ID（若本身是挂载树顶点则=mount ID）
+            - major:minor：文件系统关联设备的主:次设备号
+            - root：文件系统的路径名（挂载点的根）
+            - mount point：挂载点的文件路径名（相对该进程的根目录）
+            - mount options：挂载选项
+            - optional fields：可选项（key:value）
+            - separator：分隔符（-）
+            - filesystem type：文件系统类型
+            - mount source：文件系统相关信息
+            - super options：高级选项（如文件系统超级块）
+        - /proc/$pid/uid_map：用户映射 |ID-inside-ns|ID-outside-ns|length|
+            - ID-inside-ns：
+            - ID-outside-ns：
+                - 打开uid_map/gid_map的进程和目标进程在同一个Namespace，则为Parent User Namespace中的一个uid/gid，即Child自己设置映射
+                - 打开uid_map/gid_map的进程和目标进程不在同一个Namespace，则为当前User Namespace中的一个uid/gid，即Parent为Child设置映射
+            - length：
+            - 映射约束：
+                - 写入uid_map/gid_map的进程，须对PID进程所属User Namespace拥有CAP_SETUID/CAP_SETGID权限
+                - 写入uid_map/gid_map的进程，须位于PID进程的Parent或者Child User Namespace
+                - 写入的数据将写入进程在Parent Namespace中的有效uid/gid映射到Child Namespace。此条规则允许Child Namespace中的进程为自己设置uid/gid
+                - 进程在Parent Namespace拥有CAP_SETUID/CAP_SETGID权限，那么它将可以映射到Parent Namespace中的任一uid/gid。不过由于Child Namespace中新创建的进程是没有在Parent Namespace中的权限的，那么此条规则仅用于，位于具有相应权限的Parent Namespace中的进程，来映射同namespace内的任一IDs。
+        - /proc/$pid/gid_map：用户组映射（与/proc/$pid/uid_map类似）
 8）/root：超级用户（系统管理员root）目录
 9）/home：普通用户主目录，每个用户在其下拥有单独子目录（子目录名即用户名）
 10）/boot：Linux启动时核心文件的目录
@@ -142,7 +167,7 @@
 17）/tmp：临时存放文件的目录
 18）/opt：可选（Optional）目录
 
-6. 不常用的命令（持续更新...）
+6. 不常用的命令
 1）PulseAudio：
     - pacmd：在运行时重新配置PulseAudio声音服务，如pacmd list-cards查看声卡
     - pactl：控制正在运行的PulseAudio声音服务，如pactl list sources查看声卡信源
