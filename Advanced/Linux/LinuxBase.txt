@@ -260,29 +260,70 @@
     - install(TARGETS ${PRJ_EXEC})                                                // Install
 
 10. Linux文件系统
-1）Linux文件系统是基于磁盘的
+1）文件系统（FS，File System）：通常所说的Linux文件系统是基于磁盘的
     - 磁盘开始区域是MBR（主引导记录，系统启动引导），剩余空间用来存储分区（partition）和分区表（记录分区信息）
-    - Linux分区（partition）：|boot block|super block|inode block|data block|
-        - block：磁盘数据与内存交互，将磁盘按照内存单位（4KB）划分为块
-        - boot block：服务系统启动（未安装操作系统则预留）
-        - super block：存储文件系统控制信息（magic number文件系统类型，inode block/data block数量等）
-        - inode block（index node）：存储metadata（文件访问权限、大小、创建时间等控制信息）和data block地址
-        - data block：存储文件数据（一个文件可能对应多个data block，由inode索引）
-2）虚拟文件系统（VFS, Vitrual File System）
-    - 将各种文件系统的公共部分提取成抽象层（属于内核，在用户态和具体的文件系统之间），提供统一接口（屏蔽差异性）
+        - Linux分区（partition）：|boot block|super block|inode block|data block|
+            - block：磁盘数据与内存交互，将磁盘按照内存单位（4KB）划分为块
+            - boot block：服务系统启动（未安装操作系统则预留）
+            - super block：存储文件系统控制信息（magic number文件系统类型，inode block/data block数量等）
+            - inode block（index node）：存储metadata（文件访问权限、大小、创建时间等控制信息）和data block地址
+            - data block：存储文件数据（一个文件可能对应多个data block，由inode索引）
+    - 常见的文件系统：
+        - Ext2/3/4：扩展（Extended）文件系统，Linux默认文件系统
+        - XFS：高性能64位日志文件系统，极具伸缩性（根据需求进行伸缩的能力）和健壮性
+        - Swap：磁盘空间的交换分区（虚拟内存分区，2倍内存大小，不超过2GB），当内存不足时暂时替代内存
+        - ISO 9660：标准的CD-ROM文件系统
+        - FAT16/32（File Allocation Table）：文件分配表，16/32位空间扇区
+        - VFAT：扩展文件分配表，对FAT16文件系统进行扩展（长文件名，扩展名，时间日期）
+        - NTFS（New Technology File System）：更安全（网络/磁盘配额，文件加密...）的日志文件系统
+        - NFS（Network File System）：用来实现不同主机间文件共享的一种网络服务（通过挂载使用远程共享的资源）
+2）虚拟文件系统（VFS，Vitrual File System）
+    - 将各种文件系统的公共部分提取成抽象层（属于内核，在用户态和具体的文件系统之间），提供统一接口（屏蔽系统调用的差异性）
+        - write() -> sys_write() -> op_write()
+            - write()：用户空间的文件I/O函数
+            - sys_write()：虚拟文件系统抽象的统一接口
+            - op_write()：被操作fd（文件描述符）所在的文件系统提供的接口
     - 虚拟文件size=0，使用了虚拟文件系统（内核运行时生成）
-3）常见文件系统：
-    - Ext2/3/4：扩展（Extended）文件系统，Linux默认文件系统
-    - XFS：高性能64位日志文件系统，极具伸缩性（根据需求进行伸缩的能力）和健壮性
-    - Swap：磁盘空间的交换分区（虚拟内存分区，2倍内存大小，不超过2GB），当内存不足时暂时替代内存
-    - ISO 9660：标准的CD-ROM文件系统
-    - FAT16/32（File Allocation Table）：文件分配表，16/32位空间扇区
-    - VFAT：扩展文件分配表，对FAT16文件系统进行扩展（长文件名，扩展名，时间日期）
-    - NTFS（New Technology File System）：更安全（网络/磁盘配额，文件加密...）的日志文件系统
-    - proc：基于内存的虚拟文件系统，用来管理/proc
-    - sysfs：基于内存的虚拟文件系统，用来管理/proc
-    - tmpfs：基于内存的虚拟文件系统，用来管理/tmp，也可用于swap交换空间
-    - NFS（Network File System）：用来实现不同主机间文件共享的一种网络服务（通过挂载使用远程共享的资源）
+    - 虚拟文件系统组成：抽象了4种对象类型
+        - 超级块：存储文件系统的元信息（super_block），包含索引节点信息，挂载标志，操作方法（s_op，指向该超级块的操作函数表，如分配/销毁/读/写inode，文件同步）等
+            - file_system_type，用于描述各种文件系统的信息，在内核注册新的文件系统时实例化，并加入Linux的根文件系统的目录树结构上
+        - 索引节点：存储操作文件/目录时的全部信息（inode），包含超级块，目录，文件大小/访问时间/权限相关等信息
+            - inode代表文件系统中的一个文件（当文件被访问时，才在内存中创建索引节点），提供create()，link()，symlink()等操作
+        - 目录项：存储目录项（dentry），包括父目录项地址，子目录项链表，目录关联的索引节点等
+            - dentry是目录项，而路径/usr/bin/xxx是被拆分为4个目录项（/，usr，bin，xxx）
+            - 目录项状态（目录结构解析成目录项费力，所以内核为节省VFS开销，会将目录项缓存起来）：
+                - 被使用：指向一个有效的索引节点，且有至少一个使用者，不能被丢弃
+                - 未被使用：指向一个有效的索引节点，但VFS还未使用，尚被保留在缓存种，可以丢弃（撤销未使用的目录项，回收内存）
+                - 负状态：未指向有效的索引节点，仍然保留（可能是因为索引节点被删除或路径不正确）
+        - 文件：进程打开的文件在内存中的实例（file），同一个文件存在多个文件对象，但对应的索引节点，目录项唯一，包含文件操作方法，打开文件的读写标识，文件指针的偏移等
+            - file_struct标识进程打开的一组文件，由进程描述符种的files字段指向，包含fdt，fd_array[NR_OPEN_DEFAULT]等
+3）伪文件系统
+    - 伪文件系统的inode对用户不可访问，即仅在内核态可见（用户层的视角看起来不存在该文件系统），对一些操作系统的元素进行封装，实现Linux一切皆文件
+    - 伪文件系统：
+        - sysfs：为具体内核对象（如物理设备）建模，统一管理内核数据
+        - procfs：通过内核访问进程信息与系统信息（CPU负载，内存等），被sysfs替代（除了进程部分）
+        - tmpfs：临时存储分区，掉电后丢失数据，效率高（创建时不用格式化）
+        - devfs：提供类似文件管理方式来管理设备（/dev）
+        - debugfs：调试使用，没有任何规则来限制
+        - selinuxfs：提供SELinux文件和目录，用于配置SELinux策略，监控SELinux状态
+4）联合文件系统（UnionFS，Union File System）
+    - UnionFS是分层、轻量级且高性能的文件系统，对文件系统的修改作为一层层提交来叠加，可将不同目录挂载到同一个虚拟文件系统下
+    - UnionFS分层：一次性加载多个文件系统，联合加载会把各层文件系统叠加起来，视为一个文件系统（主要用于容器）
+        - 可共享资源
+        - 多个镜像来源于同一个base镜像，只需在外存中保存一份即可
+        - 内存中仅需加载一份base镜像，可作用于所有容器
+    - 容器与UnionFS
+        - Copy-on-Write（CoW）：写时拷贝，启动容器不拷贝，而是直接引用镜像读取（r），只有写时才拷贝镜像相应文件到可写层写入（w）
+            - 所以修改base镜像时，修改内容会反馈在容器上；而修改容器上内容时，修改内容不会影响到base镜像
+        - storage driver：
+            - AUFS（Advanced Mult-Layered Unification Filesystem）：高级多层统一文件系统（未合入Linux Kernel）
+                - 通过branch将不同文件系统的文件/目录透明覆盖，形成统一的文件系统（branch有r/rw）
+            - OverlayFS（overlay2）：堆叠文件系统
+                - 依赖并建立在其他文件系统之上，不直接参与磁盘空间结构划分
+                - OverlayFS堆叠：|Merge Dir|Upper Dir|Lower Dir|，其中Merge Dir为挂载点，Upper Dir可读写，Lower Dir只读
+                    - 上下层同名目录合并
+                    - 上下层同名文件覆盖
+                    - Lower Dir文件写时拷贝
 
 11. Linux内存管理
 1）内存（Memory）也称主存储器，用于暂时存放CPU运算的数据，也与外存（辅助存储器）数据交互
