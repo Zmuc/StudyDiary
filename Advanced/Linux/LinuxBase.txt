@@ -634,3 +634,25 @@
     - clone()：创建一个独立Namespace的进程（flags = CLONE_NEWNS | CLONE_NEWUTS | CLONE_NEWIPC;）
     - setns()：将进程加入已存在的Namepspace（本进程PID Namespace不变，子进程加入，Tip：PID是常量，进程创建时就已确认）
     - unshare()：将进程从当前Namepspace脱离，并加入新的Namepspace（本进程PID Namespace不变，子进程加入）
+
+18. Linux文件描述符
+1）文件描述符（fd，file descriptor）：内核为了高效管理已经被打开的文件所创建的索引，是非负小整数
+    - 0：stdin
+    - 1：stdout
+    - 2：stderr
+    - >=3：被打开的文件描述符
+2）Linux内核存在文件描述符相关的表：
+    - 进程级的文件描述符表：记录了进程所使用的文件描述符信息，且进程间独立（|文件描述符|文件指针|）
+    - 系统级的打开文件描述符表：打开文件的偏移量，打开文件的标识（flags），访问模式（r/w/rw）等（|文件偏移量|...|inode指针|）
+    - 文件系统的inode表：文件类型，权限，大小，指向文件所持有的锁列表等（|文件类型|...|文件锁|）
+3）文件描述符表/打开文件描述符表/inode表关系：
+    - 文件描述符表<->打开文件描述符表：文件描述符指向已打开的文件描述符，即通过文件指针
+    - 打开文件描述符表<->inode表关系：已打开的文件描述符对应文件系统的inode表，即通过inode指针
+4）查看进程的文件描述符表：/proc/$pid/fd
+5）进程描述符有关的Linux限制：
+    - 系统级限制：fs.file-max
+        - 配置： /etc/sysctl.conf
+        - 查看：cat /proc/sys/fs/file-max 或 sysctl -a | grep fs.file-max
+    - 用户级限制：nofile
+        - 配置：/etc/security/limits.conf
+        - 查看：ulimit -n
