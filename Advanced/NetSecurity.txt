@@ -244,3 +244,62 @@
     - 真随机数：根据完全随机，不可复制的输入，不可复现输出
 3）伪随机字节产生器（PRNG）：以初始密钥作为种子，输出不断重复的周期密钥流（周期越长，破解越困难）
 4）伪随机函数（PRF）：给定随机产生的密钥，该函数是定义在输入到输出的随机函数（随机函数是输入到输出的每个元素定义的函数集合中随机选取）
+
+6. PKI
+1）公开密钥基础设施（PKI，Public Key Infrastructure），利用公开密钥机制建立起来的基础设施（网络身份证明书/证书）
+2）PKI是数字证书的制作和分发的一种机制：
+    - 证书：如X.509协议的证书
+    - CA：认证机构，用于注册证书
+    - RA：注册机构，注册证书的地方
+    - CRL：证书吊销列表，如果用户私钥丢失，必须吊销证书
+    - 证书库：网络上存储证书的文件系统，也可不入库，直接分发证书（证书丢失可从这里找回，私钥丢失只能申请吊销）
+    - 应用接口（API）：为用户提供通讯和使用等安全服务
+3）生成证书的方式：
+    - 标准CA签发：受信任的第三方CA
+        - 客户端生成一对公私钥文件
+        - 基于公钥生成证书请求文件.csr
+        - 将证书请求文件.csr提交给CA得到证书.crt/.cer
+        - CA颁发证书给客户端
+    - 自签名CA签发：自己创建的CA
+        - 生成服务器私钥
+        - 生成证书请求文件.csr
+        - 对证书请求文件.csr签名（服务器私钥）并得到证书.crt/.cer
+    - 私有CA签发：企业或组织内部创建的CA
+        - 生成CA私钥
+        - 生成CA的自签名证书
+        - 生成服务端私钥
+        - 生成证书请求文件.csr
+        - 用CA证书对证书请求文件.csr签名（CA私钥）并得到证书.crt/.cer
+4）PKI的实现：OpenSSL（以私有CA签发为例）
+    - 生成CA私钥：openssl genpkey -algorithm RSA -out ca_private.key -pkeyopt rsa_keygen_bits:4096
+    - 生成CA的自签名证书：openssl req -new -x509 -days 3650 -key ca_private.key -out ca_certificate.crt -subj "/C=XX/ST=XX/L=XX/O=XX/OU=XX/CN=XX"
+    - 生成服务端私钥：openssl genpkey -algorithm RSA -out server_private.key -pkeyopt rsa_keygen_bits:2048
+    - 生成证书请求文件：openssl req -new -key server_private.key -out server.csr -subj "/C=XX/ST=XX/L=XX/O=XX/OU=XX/CN=XX"
+    - 生成证书：openssl x509 -req -days 3650 -in server.csr -CA ca_certificate.crt -CAkey ca_private.key -set_serial 01 -out server_certificate.crt
+
+7. PKCS#11
+1）PKCS#11（PKCS，Public-Key Cryptography Standards）公钥加密标准
+2）定义了独立于技术的程序设计接口（API，Application Programming Interface），接口称为Cryptoki（Cryptographic token interface），只定义库的接口，不定义库的实现
+3）主要用于智能卡和HSM
+4）涉及常用的加密对象类型（生成，修改，删除）：
+    - RSA密钥
+    - DES/三重DES密钥
+    - X.509证书（不支持管理）
+    - 还支持各种哈希算法、对称加密算法、非对称加密算法和消息认证码算法等
+
+8. HSM
+1）HSM（Hardware Security Module）硬件安全模块，是一种自主的硬件，用于车辆安全信息（如密钥相关，且隔离外部恶意软件的攻击）
+2）HSM用于构建，验证可靠的软件，以完成安全启动（在软件加载并初次访问之前）
+3）HSM包含有加解密的硬件加速功能，能够有效降低CPU负载
+4）HSM EVITA（E-safety Vehicle Intrusion Protected Applications），硬件可信方案：
+    - Full：完整，支持基于硬件加速的非对称算法，用于保护V2X（Vehicle-to-Everything）外部通信，提供最大程度的功能性和安全性
+        - CBB（Cryptographic Building Block）：密钥构建模块，包含对称算法（AES），非对称算法（RSA，ECC），哈希算法，随机数生成器（AESPRNG），单向计数器（Counters）
+        - LBB（Logic Building Block）：逻辑构建模块，包含内部配置/执行管理的CPU，配套的安全存储（RAM，NVM），及提供对外通信的数据接口（EVITA HW接口）
+    - Medium：中等，不支持基于硬件加速的非对称算法和哈希算法，以保护内部ECU，处理性能较Full稍差
+        - 与Full的差异在CBB：没有非对称算法（RSA，ECC），哈希算法
+    - Light：轻量，只是个安全硬件扩展
+        - 与Full的CBB差异：没有CBB的概念，支持对称算法（AES）硬件加速
+        - 与Full的LBB差异：没有LBB的概念，没有独立CPU，不支持可编程，提供对外通信的数据接口（EVITA HW接口）
+5）HSM实现方式：
+    - 内置HSM：HSM与MCU或SoC芯片集成在一起，HSM与Host侧通过IRQ/Shared RAM通信
+    - 外置HSM：HSM不与CU或SoC芯片集成在一起，HSM与Host侧通过SPI/UART/I2C通信
