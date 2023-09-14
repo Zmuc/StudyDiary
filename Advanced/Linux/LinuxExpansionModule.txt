@@ -1,3 +1,80 @@
+0. Open Source License
+1）Open Source License，开源许可证/协议，对开源软件的开发、发布、引用、传播等流程做了法律协议规定
+2）开源协议中的概念：
+    - 获取/复制：获取开源软件的源码
+    - 引用/使用：将开源软件作为底层的库来引用（link）
+    - 修改：对开源软件源码进行修改（二次开发）
+    - 衍生：将第三方库集成到自己的软件，或进行二次开发，衍生出新的软件
+    - 发布/分发：发布源码或软件
+    - 版权：
+        - Copyright：软件的版权和其它一切权利归作者私有，用户只有使用权，没有其它权利
+        - Copyleft：软件的版权归作者所有，其它一切权利归任何人所有
+3）开源软件与公域软件（Public Domain）的区别：开源软件有作者，需遵循开源协议；公共软件无作者，无任何要求
+4）开源协议：
+    - GPL（GNU General Public License）：GNU通用公共许可证，！！！GPL协议存在传染性
+        - 引用或修改必须（整体）开源
+        - 引用或修改必须以相同协议发布
+        - GPLv1：GPL版本1，1989/2/25
+        - GPLv2：GPL版本2，1991/6
+            - 与GPLv1的不同：
+                - 描述更新和改进
+                - 引入Liberty or Death章节（规定修改GPL软件并再次发布，也必须以此协议发布）
+                - 增加对其他开源许可证兼容
+        - GPLv3：GPL版本3，2007/6/29
+            - 与GPLv2的不同：
+                - 篇幅更长，描述更清晰
+                - 更适用于专利保护（基于GPLv3软件的相关专利，用户也可以使用）
+                - 与更多的开源许可证兼容
+    - LGPL（GNU Lesser General Public License）：GNU宽通用公共许可证
+        - 修改库必须（整体）开源，而引用库接口不必
+        - 修改库必须以相同协议发布，而引用库接口不必
+        - LGPLv2.0：GNU Library General Public License，作为GPLv2库的补充协议，1991
+        - LGPLv2.1：GNU Lesser General Public License，1999/2
+            - 与LGPLv2.0的不同：
+                - 明确了发布定义：即以源代码方式发布，必须开源（调用库接口则不必）
+        - LGPLv3.0：GNU Lesser General Public License，2007/6/29
+            - 与LGPLv2.1的不同：
+                - 专利方面的改进，提供详细条款
+                - 对引用有更详细的定义：静态链接需要将引用的库以相同协议开源（即便没有修改）；动态链接则不需要
+                - 允许动态链接库之间存在循环依赖关系
+    - MPL（Mozilla Public License）：Mozilla公共许可证
+        - 修改部分必须开源（仅指以源代码方式发布），对引用没有要求
+        - 修改无偿捐献给该软件，其版权归属原作者
+        - 需要对修改部分说明
+        - MPLv1.0：MPL版本1.0，1998/10/31
+        - MPLv1.1：MPL版本1.1，2004
+            - 与MPLv1.0的不同：
+                - 消除了“发布者”的限制，可以和任何软件结合使用
+                - 修改无偿捐献给该软件，其版权归属原作者
+                - 明确可部分开源
+        - MPLv2.0：MPL版本2.0，2012/1/3
+            - 与MPLv1.1的不同：
+                - 明确可与任何软件链接（此前未提及）
+                - 明确禁止对软件反汇编
+                - 要求派生作品必须以相同协议发布，并维护原作者的版权
+    - BSD License（Berkeley Software Distribution license）：Berkeley软件套件许可证
+        - 说明版权，不对开源做要求
+        - BSD 4-clause：Original BSD License/Old BSD License
+            - 1. 源代码的再分发必须保留版权声明（copyright）、条件列表、免责声明（保留原BSD协议）
+            - 2. 二进制的再分发必须在随分发提供的文档或其他材料中复制版权声明、条件列表、免责声明（保留原BSD协议）
+            - 3. 所有提及本软件功能或用途的广告必须显示以下声明：本产品包括由[*]开发的软件（类似鸣谢）
+            - 4. 未经事先明确的书面许可，不得使用版权所有者的姓名或贡献者的姓名来认可或推广由此软件衍生的产品
+        - BSD 3-clause：New BSD License/Modified BSD License
+            - 与BSD 4-clause的不同：
+                - 取消了第3条
+        - BSD 2-clause：Simplified BSD License/FreeBSD License
+            - 与BSD 4-clause的不同：
+                - 取消了第3条与第4条
+    - MIT（Massachusetts Institute of Technology） License：又称X License/X11 License
+        - 可复制、使用、修改、合并、出版发行、散布、再授权及贩售软件及软件副本
+        - 可根据需要修改授权条款为适当的内容，即不用遵循MIT协议
+        - 在软件及软件副本中都必须包含版权声明和许可声明
+    - Apache License：Apache许可证
+        - 提供一份Apache Licence
+        - 需要对修改部分说明
+        - 在延伸的代码中需要带有原来代码中的协议，商标，专利声明和其他原作者规定需要包含的说明
+        - 如果存在Notice则需要带有Apache Licence，可以增加其他协议但不可修改Apache Licence
+
 1. ACL
 1）ACL（Access Control Lists，访问控制列表）
 2）对单一用户设定访问文件的权限
