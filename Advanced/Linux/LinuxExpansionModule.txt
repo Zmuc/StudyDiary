@@ -398,11 +398,21 @@
 
 7. OpenSSL
 1）SSL（Secure Sockets Layer），安全套接字层协议，在传输通信协议（TCP/IP）上实现
-    - SSL建立在可靠的传输层协议TCP上，独立于应用层协议（应用层协议建立在SSL协议上）
+    - 建立在可靠的传输层协议TCP上，独立于应用层协议（应用层协议建立在SSL协议上）
 2）OpenSSL组件：
     - openssl：密码工具
         - Standard commands：标准命令
         - Message Digest commands（dgst）：消息摘要命令
         - Cipher commands（enc）：加密命令
-    - libssl.so：SSL协议库
+    - libssl.so：协议库
+        - SSL（Secure Socket Layer）/TLS（Transport Layer Security）：可靠的传输协议（TCP），包含记录协议，握手协议
+            - 记录协议（Record Protocol）：用于可靠的传输协议之上，为高层协议提供数据封装、压缩、加密等基本功能
+            - 握手协议（Handshake Protocol）：用于记录协议之上，用于数据传输开始前，通讯双方进行身份认证、协商加密算法、交换加密密钥等
+        - DTLS（Datagram Transport Layer Security）：不可靠的传输协议（UDP），TLS的衍生版本
     - libcrypto.so：密码算法库
+        - 对称加解密算法：AES、DES、Blowfish、RC4等
+        - 非对称加解密加密：RSA、DSA、ECDSA、ECC等
+        - 哈希算法：SHA-1、SHA-2、MD5等
+        - 数字签名算法：DSA、ECDSA等
+        - 消息认证码算法：HMAC（Hash-based Message Authentication Code）等
+        - 随机数生成器：各种强随机数生成器
