@@ -1,0 +1,67 @@
+ARM Cortex
+1）ARM Cortex系列：
+    - A系列：面向性能密集型系统的应用处理器内核，人机交互要求高，如手机，平板等
+    - R系列：面向实时应用的高性能内核，对实时性要求高，如车载控制产品等
+    - M系列：面向各类嵌入式应用的微控制器内核，通用于低端的微控制器，仅是高级点的单片机
+2）Cortex-R5处理器是一款中端CPU，用于深度嵌入式实时系统
+    - 实现了ARMv7-R架构，使用Thumb-2技术，可实现最佳代码密度和处理吞吐量
+        - 用于整数和浮点矢量运算的高级单指令流多数据流（SIMD，Single Instruction Multiple Data）架构扩展
+        - 矢量浮点版本3（VFPv3，Vector Floating-Point version 3）架构扩展，用于完全符合IEEE 754标准的浮点计算
+        - 用于多处理功能的多处理扩展
+    - 单个算术逻辑单元（ALU，Arithmetic Logic Unit）：实现有限的双指令发出，可有效利用资源（如寄存器）
+    - 提供硬件的加速器一致性端口（ACP，Accelerator Coherency Port）：与其他主设备共享内存时，减少对慢速软件缓存维护操作的需求
+    - 紧耦合内存（TCM，Tightly-Coupled Memory）：对本地RAM的低延迟和确定性访问，并对通用内存有更高性能的高速缓存（cache）
+    - 错误校验和纠错（ECC，Error Checking and Correction）：用于Nand的差错检测和修正算法，以提高可靠性并满足安全关键型应用的需求
+    - 通过中断和重新启动负载存储多个指令，并通过专用外设端口实现对中断控制器的低延迟访问，可以保持较低的中断延迟
+    - 实现了嵌入式跟踪宏单元v3.3（ETM，Embedded Trace Macrocells）架构配置文件
+    - 先进的微控制器总线架构，符合AMBA 3协议
+    - 对安全扩展和CoreSight的支持
+
+ARM TrustZone
+1）TrustZone（TZ），基于硬件的安全功能，通过对原有硬件架构进行修改，在处理器层次引入了两个不同权限的保护域（将每个物理核虚拟化为2个核，基于时间片的方式运行占用物理核）：
+    - secure：安全世界，需要被保护，提供可信执行环境（TEE，Trusted Execution Environment），如安全小内核（TEE-kernel）
+    - normal/non secure：普通/非安全世界，不需要被保护，提供正常执行环境（REE，Rich Execution Environment），如Linux Kenrel，Android，IOS等
+    - Monitor Mode：在安全世界和非安全世界之间切换（ATF，属于安全世界）
+2）处理器在任何时刻仅在其中一个环境下运行，也只能访问对应的资源（中断，内存，外设和cache等）：
+    - secure：既能访问secure，又能访问non secure
+    - non secure：只能访问non secure
+3）AMBA3 AXI（AMBA3 Advanced eXtensible Interface）作为TrustZone基础架构的系统总线，提供安全世界和非安全世界的隔离机制（安全总线NS位）
+4）ARMv8的4个异常等级（EL0~EL3），数字越大，特权（privilege）越大：
+    - EL0：unprivileged，用于执行用户态App
+    - EL1：OS kernel mode，用于执行操作系统内核（Kernel/Trusted OS）
+    - EL2：Hypervisor mode，用于hypervisor程序
+    - EL3：TrustZone monitor mode，用于执行CPU的secure配置，及切换低于EL3异常等级运行时的secure配置，仅能运行在secure状态
+
+Arm Trusted Firmware
+1）Arm Trusted Firmware（ATF），可信固件，组成一条信任链
+2）ARMv8启动层次：BL1 -> BL2 -> BL31 -> BL32 -> BL31 -> BL33
+    - BL1：Trusted Boot ROM，一切可信任的根，从CPU内的SRAM划分一块Trusted SRAM给bl1_main()使用，初始化串口console，找到BL2并验签
+    - BL2：Trusted Boot Firmware，在Flash中的可信安全启动代码bl2_main()，初始化安全硬件，找到BL31并验签
+    - BL3x：
+        - BL31：EL3 Runtime Firmware，EL3最后的可信固件，通过SMC为non secure环境提供持续的安全服务，找到BL32并验签
+        - BL32：Secure EL1 Payload，提供OP-TEE OS（EL1）与APP（EL0），OP-TEE OS运行起来后返回BL31，再去找到BL33并验签
+        - BL33：Non Trusted Firmware -> Non Secure OS（UEFI/U-Boot -> Hypervisor/Linux Kernel），非可信固件去启动非安全系统
+
+Arm OP-TEE
+1）OP-TEE（Opensource Project Trusted Execution Environment），开源可信执行环境
+    - TEE（Trusted Execution Environment）：可信执行环境（安全世界） <-- OP-TEE所在
+    - REE（Rich Execution Environment）：正常执行环境（非安全世界）
+2）OP-TEE框架实现：
+    - optee_os：OPTEE-OS，安全世界的可信操作系统
+    - optee_client：非安全世界的客户端
+    - optee_test：OP-TEE测试套件
+    - Linux中OP-TEE驱动
+3）TEE与REE资源访问：
+    - 安全世界/TEE：执行OP-TEE OS相关代码
+    - 非安全世界/REE：执行Linux Kenrel等相关代码
+    - Linux Kernel访问TEE资源时，需要通过TA和CA
+4）TA（Trust Appliaction）和CA（Client Applications）：
+    - CA：运行在非安全世界（Linux）的客户端
+    - TA：运行在安全世界的OS之上的可信程序
+    - CA与TA通信：使用共享内存，CA通过TEE Client API与TA通信，从TA获取安全服务
+5）OP-TEE启动流程：
+    - OP-TEE应尽早启动，须在bootloader（BL33）之前，防止敏感信息被触碰
+    - ARMv8上：BL1 -> BL2 -> BL31 -> BL32（OP-TEE OS启动） -> BL31 -> BL33
+6）OP-TEE安全存储（for TA）：
+    - 非安全世界：以加密/授权方式存储于Linux文件系统的目录中
+    - 安全世界：存储在RPMB（Replay Protected Memory Block，重放保护内存块）分区
