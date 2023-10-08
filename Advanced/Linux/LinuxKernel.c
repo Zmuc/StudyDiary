@@ -221,3 +221,59 @@ current_cred
 // ptr：结构体变量中某个成员的地址
 // type：结构体类型
 // member：该结构体变量的名字
+
+/* ------  驱动模板与详解  ------ */
+#include <linux/fs.h>		 // file_*（file_operations）声明
+#include <linux/module.h>    // module_*（module_init，module_exit）声明
+#include <linux/init.h>      // __init/__exit宏定义声明
+#include <linux/device.h>    // class/devise结构体声明
+#include <linux/types.h>     // 设备号dev_t类型声明
+#include <asm/io.h>          // io*（ioremap iounmap）声明
+#include <linux/uaccess.h>   // copy_from_user声明
+
+static struct class *xxx_class;  // 设备的逻辑类，/sys/class
+static struct device *xxx_class_dev;  // 设备，/dev
+
+static char *module_name="xxx";           // 模块名xxx
+static dev_t devno;                       // 设备号
+static int devno_major = 222;             // 主设备号
+static int devno_minor = 0;               // 次设备号
+
+// open()实现
+static int xxx_open(struct inode *inode, struct file *file)
+{
+    printk("xxx open\n");  // printk为内核打印函数
+    return 0;
+}
+
+// xxx模块的文件操作表，定义了open()/xxx_open()
+static struct file_operations xxx_fops = {
+    .owner = THIS_MODULE,  // 代表当前模块
+    .open  = xxx_open,  // open()打开/dev/xxx时，内核会调用到xxx_open
+};
+
+// 真实的驱动入口，实现驱动的初始化
+int __init xxx_drv_init(void)
+{
+    int ret = 0;
+
+    devno = MKDEV(devno_major, devno_minor);  // 根据主次设备号创建设备号
+    ret = register_chrdev(devno_major, module_name, &xxx_fops);  // 注册驱动，将此驱动加入到内核的驱动链表中
+
+    xxx_class = class_create(THIS_MODULE, "XXX");  // 自动生成设备的逻辑类目录（/sys/class/XXX），初始为空
+    xxx_class_dev = device_create(xxx_class, NULL, devno, NULL, module_name);  // 与逻辑类关联，并自动创建设备文件（/dev/xxx），逻辑设备目录（/sys/devices/virtual）
+
+    return ret;
+}
+
+// 真实的驱动出口，卸载驱动
+void __exit xxx_drv_exit(void)
+{
+    device_destroy(xxx_class,devno);  // 销毁设备，~device_create()
+    class_destroy(xxx_class);  // 销毁逻辑类，~class_create()
+    unregister_chrdev(devno_major, module_name);  // 注销驱动，将此驱动从内核的驱动链表中移除，~register_chrdev()
+}
+
+module_init(xxx_drv_init);  // 驱动框架入口
+module_exit(xxx_drv_exit);  // 驱动框架出口
+MODULE_LICENSE("BSD/GPL");  // 标明该驱动的开源许可协议
