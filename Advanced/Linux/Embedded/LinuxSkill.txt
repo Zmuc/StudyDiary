@@ -1,0 +1,463 @@
+1. IO相关
+1）传统IO，其底层是通过read()与write()实现的
+以硬盘 -> 网卡设备为例，整个过程发生了4次拷贝，4次用户态/内核态上下文切换
+---
+         1|     * 内核态    <-- read() --    用户态  // 系统调用
+         2|     内核缓冲区    <-- DMA拷贝 --    | 硬盘
+                    ↑
+                    |
+                    ↓         
+         3|     内核缓冲区    -- CPU拷贝 -->    应用缓冲区
+         4|     * 内核态    -- read() -->    用户态  // 调用返回
+---
+         5|     * 内核态    <-- write() --    用户态  // 系统调用
+         6|     socket缓冲区    <-- CPU拷贝 --    应用缓冲区
+                    ↑
+                    |
+                    ↓   
+         7|     socket缓冲区    -- DMA拷贝 -->    | 网卡设备
+         8|     * 内核态    -- write() -->    用户态  // 调用返回
+---
+Step 1. 用户进程调用read()发起系统调用，上下文由用户态_切换_到内核态  // 0 1（拷贝次数，上下文切换次数）
+Step 2. DMA控制器（Direct Memory Access，直接内存访问）把数据从硬盘_拷贝_到内核缓冲区  // 1 1
+Step 3. CPU把内核缓冲区数据_拷贝_到应用缓冲区（如自定义的buf）  // 2 1
+Step 4. 上下文由内核态_切换_到用户态，且read()返回  // 2 2
+Step 5. 用户进程调用write()发起系统调用，上下文由用户态_切换_到内核态  // 2 3
+Step 6. CPU将应用缓冲区数据_拷贝_到socket缓冲区  // 3 3
+Step 7. DMA控制器把数据从socket缓冲区_拷贝_到网卡设备  // 4 3
+Step 8. 上下文由内核态_切换_到用户态，且write()返回  // 4 4
+
+2）零拷贝，减少传统IO中拷贝和用户态/内核态上下文切换次数
+2.1）mmap + write：mmap将内核缓冲区与应用缓冲区地址映射并共享
+与传统IO相比，只有3次拷贝，4次用户态/内核态上下文切换
+---
+         1|     * 内核态    <-- mmap() --    用户态  // 系统调用
+         2|     内核缓冲区    <-- DMA拷贝 --    | 硬盘
+                    ↑
+                    | 
+                    ↓  
+         3|     内核缓冲区    <-- 映射并共享 -->    应用缓冲区
+         4|     * 内核态    -- mmap() -->    用户态  // 调用返回
+---
+         5|     * 内核态    <-- write() --    用户态  // 系统调用
+                内核缓冲区
+                    ↑
+         6|         | CPU拷贝
+                    ↓  
+         7|     socket缓冲区    -- DMA拷贝 -->    | 网卡设备
+         8|     * 内核态    -- write() -->    用户态  // 调用返回
+---
+Step 1. 用户进程调用mmap()发起系统调用，上下文由用户态_切换_到内核态  // 系统调用变更
+...
+Step 3. CPU把内核缓冲区数据与应用缓冲区地址映射并共享  // 拷贝-1
+Step 4. 上下文由内核态_切换_到用户态，且mmap()返回  // 系统调用变更
+...
+Step 6. CPU将内核缓冲区数据_拷贝_到socket缓冲区  // CPU拷贝到socket缓冲区的来源变更
+...
+
+2.2）sendfile：替代read + write，可以直接在内核空间进行传输
+与传统IO相比，只有3次拷贝，2次用户态/内核态上下文切换
+！不再使用应用缓冲区
+---
+         1|     * 内核态    <-- sendfile() --    用户态  // 系统调用
+         2|     内核缓冲区    <-- DMA拷贝 --    | 硬盘
+                    ↑
+         3|         | CPU拷贝
+                    ↓
+         4|     socket缓冲区    -- DMA拷贝 -->    | 网卡设备
+         5|     * 内核态    -- sendfile() -->    用户态  // 调用返回
+---
+Step 1. 用户进程调用sendfile()发起系统调用，上下文由用户态_切换_到内核态  // 0 1
+Step 2. DMA控制器（Direct Memory Access，直接内存访问）把数据从硬盘_拷贝_到内核缓冲区  // 1 1
+Step 3. CPU将内核缓冲区数据_拷贝_到socket缓冲区  // 2 1
+Step 4. DMA控制器把数据从socket缓冲区_拷贝_到网卡设备  // 3 1
+Step 5. 上下文由内核态_切换_到用户态，且sendfile()返回  // 3 2
+
+2.3）sendfile + DMA Scatter/Gather：对sendfile进一步优化，引入新的硬件支持：DMA Scatter/Gather（分散/收集）
+与传统IO相比，只有2次拷贝，2次用户态/内核态上下文切换
+！不再使用应用缓冲区，不再使用CPU拷贝
+---
+         1|     * 内核态    <-- sendfile() --    用户态  // 系统调用
+         2|     内核缓冲区    <-- DMA拷贝 --    | 硬盘
+                    ↑
+         3|         |    -- CPU发送缓冲区中文件描述符和数据长度 -->    socket缓冲区
+                    ↓
+         4|     内核缓冲区    -- DMA拷贝 -->    | 网卡设备
+         5|     * 内核态    -- sendfile() -->    用户态  // 调用返回
+---
+...
+Step 3. CPU将内核缓冲区的文件描述符和数据长度发送到socket缓冲区  // 不再拷贝，而是发送部分数据
+...
+
+
+2. Linux总线中设备和驱动注册流程
+Linux系统中有Linux总线，可通过ls /sys/bus查询
+|
+|-- HID子系统总线
+|-- I2C总线
+|-- ISA总线
+|-- media总线
+|-- mmc存储设备总线
+|-- SPI总线
+|-- ...
+|-- 平台总线 -- |
+                |
+                |-- 设备链表  <--  注册设备 |设备0...N|
+                                      | struct platform_device {
+                                          const char *name;
+                                          int id;
+                                          bool id_auto;
+                                          struct device dev;
+                                          u64 platform_dma_mask;
+                                          struct device_dma_parameters dma_parms;
+                                          u32 num_resources;
+                                          struct resource *resource;  // 指定资源
+                                          const struct platform_device_id *id_entry;
+                                          char *driver_override;  // 设备名称，强制匹配
+                                          struct mfd_cell *mfd_cell;  // MFD单元格指针
+                                          struct pdev_archdata archdata;  // 特定于ARCH的附加数据
+                                          ANDROID_KABI_RESERVE(1);
+                                          ANDROID_KABI_RESERVE(2);};
+                |
+                |-- 驱动链表  <--  注册驱动 |驱动0...N|
+                                      | struct platform_driver {
+                                          int (*probe)(struct platform_device *);
+                                          int (*remove)(struct platform_device *);
+                                          void (*shutdown)(struct platform_device *);
+                                          int (*suspend)(struct platform_device *, pm_message_t state);
+                                          int (*resume)(struct platform_device *);
+                                          struct device_driver driver;  // 其中包含{ .name = "xxx", }
+                                          const struct platform_device_id *id_table;  // 其中包含{ .name = "xxx", }
+                                          bool prevent_deferred_probe;
+                                          ANDROID_KABI_RESERVE(1);};
+                |
+                |-- 链表：平台platform总线
+                                |
+                                |--> struct bus_type platform_bus_type = {
+                                       .name       = "platform",
+                                       .dev_groups = platform_dev_groups,
+                                       .match      = platform_match,
+                                       .uevent     = platform_uevent,
+                                       .pm         = &platform_dev_pm_ops,}
+                                |
+                                |-->  总线链表尾部为null  <--------------|
+                                                                        |
+                                                                        | 设备和驱动不匹配
+                                                                        |
+                         platform_device结构体注册设备    -->    <platform_match匹配>  ---->  设备和驱动匹配  -->  调用platform_driver.probe
+                                                                        ↑
+                         platform_driver结构体注册驱动  --------------| 设备一般先于驱动注册（热插拔相反，先注册驱动）
+// 一些说明
+a. platform_match匹配规则：
+    1. platform_device.driver_override与platform_driver.driver.name匹配
+    2. platform_device.name与platform_driver.id_table.name匹配
+    3. platform_device.name与platform_driver.driver.name匹配
+b. 调用platform_driver.probe：
+    1. 分配/注册file_operations
+    2. 根据platform_device确定硬件
+    3. 映射寄存器
+    4. 操作寄存器
+
+
+3. dma-buf
+解决各个驱动之间buffer共享的问题，本质上是buffer（既是物理buffer）与file（又是Linux file）的结合
+dma-buf框架：
+---
+  user
+   |
+   ↓
+exporter（dma-buf）  <---  importer(s)
+   |
+   ↓
+ buffer
+---
+> exporter：是一个驱动程序，创建dma_buf并分配特定内存
+---
+#include <linux/dma-buf.h>
+#include <linux/module.h>
+#include <linux/miscdevice.h>
+
+struct dma_buf *export_dmabuf;  // 修改成static结构体变量，配合fd和dma_buf *指针的转换（见dma_buf_fd()/dma_buf_get()），可消除importer对exporter的耦合
+EXPORT_SYMBOL(export_dmabuf);
+
+// 忽略函数形参及内部实现
+static struct sg_table *exporter_map_dma_buf(struct dma_buf_attachment *, enum dma_data_direction){}
+static void exporter_unmap_dma_buf(struct dma_buf_attachment *, struct sg_table *, enum dma_data_direction){}
+static void exporter_release(struct dma_buf *){}
+
+// dma_buf_ops.vmap
+static void *exporter_vmap(struct dma_buf *dmabuf) {
+	return dmabuf->priv;
+}
+
+// dma_buf_ops.mmap
+static int exporter_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vm_area)
+{
+	void *vaddr = dmabuf->priv;
+
+	return remap_pfn_range(vm_area, vm_area->vm_start, virt_to_pfn(vaddr), PAGE_SIZE, vm_area->vm_page_prot);  // mmap操作接口的实现
+}
+
+// file_operations.unlocked_ioctl,可用于消除importer对exporter的耦合
+static long exporter_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg)
+{
+	int fd = dma_buf_fd(export_dmabuf, O_CLOEXEC);
+	copy_to_user((int __user *)arg, &fd, sizeof(fd));
+
+	return 0;
+}
+
+// dma_buf_ops.begin_cpu_access
+static int exporter_begin_cpu_access(struct dma_buf *dmabuf, enum dma_data_direction dir)
+{
+	dma_addr_t dma_addr = virt_to_phys(dmabuf->priv);
+
+	dma_sync_single_for_cpu(NULL, dma_addr, PAGE_SIZE, dir);  // 与dma_sync_single_for_device对应
+
+	return 0;
+}
+
+// dma_buf_ops.end_cpu_access
+static int exporter_end_cpu_access(struct dma_buf *dmabuf, enum dma_data_direction dir)
+{
+	dma_addr_t dma_addr = virt_to_phys(dmabuf->priv);
+
+	dma_sync_single_for_device(NULL, dma_addr, PAGE_SIZE, dir);  // 与dma_sync_single_for_cpu对应
+
+	return 0;
+}
+
+// file_operations.mmap
+static int exporter_misc_mmap(struct file *file, struct vm_area_struct *vma)
+{
+	return dma_buf_mmap(dmabuf_exported, vma, 0);
+}
+
+// 文件操作结构体
+static struct file_operations exporter_file_ops = {
+	.owner		    = THIS_MODULE,
+	.unlocked_ioctl	= exporter_ioctl,  // 将dma-buf的fd通过ioctl()传给用户，用户对fd操作（匿名文件，不能直接打开）
+    .mmap           = exporter_misc_mmap,  // 将dma-buf的mmap()回调接口嫁接到misc driver的mmap()文件操作接口上，对misc driver进行mmap()，实际映射的是dma-buf的物理内存
+};
+
+// dma_buf操作结构体，部分函数必须实现（map_dma_buf/unmap_dma_buf/release）
+static const struct dma_buf_ops export_dmabuf_ops = {
+	.map_dma_buf      = exporter_map_dma_buf,
+	.unmap_dma_buf    = exporter_unmap_dma_buf,
+	.release          = exporter_release,
+    .vmap             = exporter_vmap,  // 可选，用于CPU Access
+    .mmap             = exporter_mmap,  // 可选，用于CPU Access
+    .attach           = exporter_attach,  // 可选，用于DMA Access
+	.begin_cpu_access = exporter_begin_cpu_access,  // 可选，用于CPU Access（同步过程，进入）
+	.end_cpu_access   = exporter_end_cpu_access,  // 可选，用于CPU Access（同步过程，退出）
+};
+
+// miscdevice结构体，通过misc driver的ioctl()将export_dmabuf的fd传递给上层应用程序
+static struct miscdevice misc_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name  = "exporter",
+	.fops  = &exporter_file_ops,
+};
+
+// 初始化
+static int __init exporter_init(void)
+{
+    struct dma_buf *dmabuf;
+
+    /* DEFINE_DMA_BUF_EXPORT_INFO宏函数定义
+    #define DEFINE_DMA_BUF_EXPORT_INFO(name)        \
+        struct dma_buf_export_info name = { .exp_name = KBUILD_MODNAME, \
+                                            .owner    = THIS_MODULE }
+     */
+	DEFINE_DMA_BUF_EXPORT_INFO(export_info);  // export_info在宏中声明定义
+
+    /* dma_buf_export_info结构体
+    struct dma_buf_export_info {
+        const char *exp_name;  // exporter的名字
+        struct module *owner;  // 指向exporter模块的指针
+        const struct dma_buf_ops *ops;  // 将分配器定义的dma_buf_ops附加到新的缓冲区
+        size_t size;  // 缓冲区大小
+        int flags;  // 文件模式的标志
+        struct dma_resv *resv;  // 保留对象，NULL分配默认对象
+        void *priv;  // 将分配器的私有数据附加到此缓冲区
+
+        ANDROID_KABI_RESERVE(1);  // 预留一块区域用于函数调用地址的内存
+        ANDROID_KABI_RESERVE(2);  // 预留一块区域用于其他类型的内存
+    };
+     */
+	export_info.ops = &export_dmabuf_ops;
+	export_info.size = PAGE_SIZE;
+	export_info.flags = O_CLOEXEC;
+	export_info.priv = "xXx";
+
+	dmabuf = dma_buf_export(&export_info);
+
+	return misc_register(&misc_device);
+}
+
+// 退出
+static void __exit exporter_exit(void)
+{
+	misc_deregister(&misc_device);
+}
+
+module_init(exporter_init);
+module_exit(exporter_exit);
+---
+> importer：是dma_buf的使用者
+---
+#include <linux/dma-buf.h>
+#include <linux/module.h>
+#include <linux/miscdevice.h>
+
+extern struct dma_buf *export_dmabuf;  // 从exporter中导入export_dmabuf，消除importer对exporter的耦合后可不需要
+
+// file_operations.unlocked_ioctl，可用于消除importer对exporter的耦合
+static long importer_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg)
+{
+	int fd;
+	struct dma_buf *dma_buf;
+
+	copy_from_user(&fd, (void __user *)arg, sizeof(int));
+
+	dma_buf = dma_buf_get(fd);
+	importer_test(dma_buf);
+	dma_buf_put(dma_buf);
+
+	return 0;
+}
+
+// 文件操作结构体
+static struct file_operations importer_file_ops = {
+	.owner	        = THIS_MODULE,
+	.unlocked_ioctl	= importer_ioctl,
+};
+
+// miscdevice结构体
+static struct miscdevice misc_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "importer",
+	.fops = &importer_fops,
+};
+
+// 初始化
+static int __init importer_init(void)
+{
+    /* -- dma_buf_ops.vmap + dma_buf_ops.begin_cpu_access + dma_buf_ops.end_cpu_access -- */
+	void *vaddr;
+
+    dma_buf_begin_cpu_access(export_dmabuf, DMA_FROM_DEVICE);  // 对应dma_buf_end_cpu_access
+
+	vaddr = dma_buf_vmap(export_dmabuf);
+	pr_info("dma_buf vmap: %s\n", (char *)vaddr);  // xXx
+	dma_buf_vunmap(export_dmabuf, vaddr);
+
+    dma_buf_end_cpu_access(export_dmabuf, DMA_FROM_DEVICE);  // 对应dma_buf_begin_cpu_access
+
+	return misc_register(&misc_device);
+}
+
+// 退出
+static void __exit importer_exit(void)
+{
+	misc_deregister(&misc_device);
+}
+
+module_init(importer_init);
+module_exit(importer_exit);
+---
+> user：也是dma_buf的使用者（特指用户空间的使用者）
+---
+int main(int argc, char *argv[])
+{
+    // SHOW file_operations.unlocked_ioctl + dma_buf_ops.mmap（exporter_mmap，从dma_buf_fd获取）
+	int fd;
+	int dma_buf_fd = 0;
+
+	fd = open("/dev/exporter", O_RDONLY);
+	ioctl(fd, 0, &dma_buf_fd);  // dma_buf_fd通过misc driver的ioctl接口获取dma-buf的fd
+	close(fd);
+
+	char *str = mmap(NULL, 4096, PROT_READ, MAP_SHARED, dma_buf_fd, 0);  // exporter_mmap，从dma_buf_fd获取
+	printf("dma_buf mmap: %s\n", str);  // xXx
+
+	// SHOW file_operations.unlocked_ioctl + dma_buf_ops.mmap（exporter_misc_mmap，从fd获取）
+	int fd;
+
+	fd = open("/dev/exporter", O_RDONLY);
+	char *str = mmap(NULL, 4096, PROT_READ, MAP_SHARED, fd, 0);  // exporter_misc_mmap，从fd获取
+	printf("file mmap: %s\n", str);  // xXx
+	close(fd);
+
+    // SHOW 消除importer对exporter的耦合，通过fd
+	int fd;  // 跨进程fd传递需考虑借助Linux-socket/Android-Binder
+	int dma_buf_fd = 0;
+
+	fd = open("/dev/exporter", O_RDONLY);
+	ioctl(fd, 0, &dma_buf_fd);  // 从exporter中获取dma-buf的fd
+	close(fd);
+
+	fd = open("/dev/importer", O_RDONLY);
+	ioctl(fd, 0, &dma_buf_fd);  // 将获取的dma-buf的fd传给importer 
+	close(fd);
+
+    // SHOW dma_buf_ops.begin_cpu_access + dma_buf_ops.end_cpu_access
+	int fd;
+	int dma_buf_fd = 0;
+	struct dma_buf_sync sync = {0};
+
+	fd = open("/dev/exporter", O_RDONLY);  // 获取dma-buf的fd（即dma_buf_fd，通过misc driver的ioctl接口）
+	ioctl(fd, 0, &dma_buf_fd);
+	close(fd);
+
+	sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_START;  // 同步标志START
+	ioctl(dma_buf_fd, DMA_BUF_IOCTL_SYNC, &sync);
+
+	char *str = mmap(NULL, 4096, PROT_READ, MAP_SHARED, dma_buf_fd, 0);
+	printf("file mmap: %s\n", str);
+
+	sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;  // 同步标志END
+	ioctl(dma_buf_fd, DMA_BUF_IOCTL_SYNC, &sync);
+
+    return 0;
+}
+---
+dma-buf相关概念（含API）
+struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info);  // 导出dma-buf（创建dma-buf），内部引用计数f_count初始化为1（为0时释放，即dma_buf_ops.release）
+1）CPU Access：
+--- 映射
+vmap()/mmap()：见上述示例，主要用于dma-buf的物理内存直接映射到用户空间
+int dma_buf_mmap(struct dma_buf *, struct vm_area_struct *, unsigned long);  // 将dma-buf的物理内存直接映射到用户空间，对应dma_buf_ops.mmap回调（可选）
+--- dma-buf操作（引用，dma-buf <--> fd）
+static inline void get_dma_buf(struct dma_buf *dmabuf){get_file(dmabuf->file);}  // 引用计数+1
+struct dma_buf *dma_buf_get(int fd);  // 引用计数+1，且fd转换为dma_buf指针（fd --> dma-buf）
+void dma_buf_put(struct dma_buf *dmabuf);  // 引用计数-1
+int dma_buf_fd(struct dma_buf *dmabuf, int flags);  // 引用计数不变，仅创建fd（dma-buf --> new fd）
+---
+2）DMA Access：
+--- 
+struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf, struct device *dev);  // 用于建立一个dma-buf与device的连接关系（放入struct dma_buf_attachment），对应dma_buf_ops.attach回调（可选）
+struct sg_table *dma_buf_map_attachment(struct dma_buf_attachment *, enum dma_data_direction);  // 生成sg_table（兼容所有DMA硬件），并同步cache（防止该buffer事先被CPU填充过，数据暂存在cache中而非DDR上，导致DMA访问的不是最新的有效数据），对应dma_buf_ops.map_dma_buf回调
+dma_buf_attach -> dma_buf_map_attachment：让exporter驱动连接各device，并根据它们的硬件能力，来分配最合适的物理内存（同一个dma-buf可能会被多个DMA硬件访问，保证他们都能寻址到）
+--- 
+分配内存：dma_buf_export() + dma_buf_map_attachment()
+如果硬件A和B的寻址空间有交集，则在dma_buf_export()阶段进行内存分配，以A，B的交集分配
+如果硬件A和B的寻址空间无交集，则只能在dma_buf_map_attachment()阶段分配内存 --> 无交集但实现共享内存，是因为其中一个通过CPU或DMA将buffer内容拷贝到另外一个buffer中，间接实现buffer共享
+
+sg_table是由一块块单个物理连续的buffer所组成的链表（整体上看是离散的）
+scatterlist -- scatterlist -- scatterlist -- scatterlist
+     |              |              |              |
+   buffer         buffer         buffer         buffer
+scatterlist对应一块物理连续的buffer，可通过接口获取buffer的物理地址和长度（sg_list为scatterlist）
+sg_dma_address(sg_list)  // 获取buffer物理地址
+sg_dma_len(sg_list)      // 获取buffer长度
+
+同步cache：CPU 在访问内存（DDR）时是要经过cache的（CPU <-> cache <-> DDR），而DMA外设（DPU，GPU）与内存直接访问（DMA <-> DDR），存在cache与DDR一致性问题
+Tip：dma-buf对应的物理内存是uncache，或buffer以coherent方式分配，即CPU <-> DDR，不存在一致性问题
+int dma_buf_begin_cpu_access(struct dma_buf *dma_buf, enum dma_data_direction dir);  // 对应dma_buf_ops.begin_cpu_access
+int dma_buf_end_cpu_access(struct dma_buf *dma_buf, enum dma_data_direction dir);  // 对应dma_buf_ops.end_cpu_access
+// dma_buf_begin_cpu_access/end_cpu_access实现：
+dma_sync_single_for_cpu()/dma_sync_single_for_device()
+dma_sync_sg_for_cpu()/dma_sync_sg_for_device()
+*for_cpu()是为了Invalidate Cache（访问内存之前），CPU从DDR上加载最新的数据到cache上
+*for_device()是为了Flush Cache（访问内存之后），将cache中的数据全部回写到DDR上（后续DMA才能访问到正确的有效数据）
