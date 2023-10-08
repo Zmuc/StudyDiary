@@ -164,3 +164,37 @@ ppp = 0x90000001
 3）一元运算符比二元运算符具有更高的优先级
 4）运算符典型问题
     - int* p, q;  // = int *p; int q; != int *q; int *q;
+
+5. read与write的文件操作
+read：从fd1的文件偏移处（_）进行读取，同时文件偏移也会根据读取移动
+// fd1：a_ b c d e f g h
+write：在fd2的文件偏移处（_）写入，同时文件偏移向后移动
+// fd2：A B C D E_
+举例，其中buf大小为3：
+/* code
+ *
+while ((bytes_read = read(fd1, buf, sizeof(buf))) > 0) {
+    write(fd2, buf, bytes_read);
+}
+ *
+ */
+上述可拆分为（根据if判断）：
+Step 1：
+fd1：a b c d_ e f g h
+buf：a b c（bytes_read=3）
+fd2：A B C D E a b c_
+
+Step 2：
+fd1：a b c d e f g_ h
+buf：d e f（bytes_read=3）
+fd2：A B C D E a b c d e f_
+
+Step 3：
+fd1：a b c d e f g h_
+buf：g h（bytes_read=2）
+fd2：A B C D E a b c d e f g h_
+
+Step 4（未入循环）：
+fd1：a b c d e f g h_
+buf：（bytes_read=0，exit）
+fd2：A B C D E a b c d e f g h_
