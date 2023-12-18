@@ -69,7 +69,7 @@
     - 指定gcc选项-static，会强制使用静态库进行链接
 7）ELF文件（Executable and Linkable Format，可执行链接格式）：包括可重定向目标文件（.o）、可执行目标文件（.out）、共享目标文件（库文件，即静态库.a/动态库.so）
 
-4. 常用的系统环境变量（持续更新...）
+4. 常用的系统环境变量
 1）自定义系统环境变量：/etc/profile中，export VALUE=*
 2）自定义用户环境变量：
     - ~/.bash_profile：存在该文件时，用户登录shell时执行，且不再执行~/.profile
@@ -122,7 +122,9 @@
     - /dev/console（c）：控制台
     - /dev/fb0（c）：FrameBuffer（屏幕每个点映射成一段线性内存空间）
     - /dev/random/urandom（c）：随机数设备
+    - /dev/shm：驻留在内存RAM中，仅在使用shm_open()打开文件时，/dev/shm才会真正占用内存
 7）/proc：进程（Processes）目录（/proc是伪文件系统，即虚拟文件系统，是系统内存的映射）
+    - /proc/cmdline：内核启动参数
     - /proc/$pid：进程相关
         - /proc/$pid/mountinfo：挂载信息，|mount ID|parent mount ID|major:minor|root|mount point|mount options|optional fields|separator|filesystem type|mount source|super options|
             - mount ID：mount操作唯一的ID
@@ -656,3 +658,102 @@
     - 用户级限制：nofile
         - 配置：/etc/security/limits.conf
         - 查看：ulimit -n
+
+19. 信号
+1）信号是信息的载体
+    - 简单
+    - 不能携带大量信息
+    - 满足某个特设条件才发送
+2）信号是软件中断（有延时性，但用户不易察觉），异步机制，由内核进行发送/处理
+3）信号状态：产生 -> 未决 -> 递达 -> 处理 
+    - 产生：
+        - 按键：Ctrl+c，Ctrl+z...
+        - 系统调用：kill（给指定进程发送指定信号，需要看权限），raise（给当前进程发送指定信号），abort（给自己发送SIGABRT信号）...
+        - 软件条件：定时器alarm...
+        - 硬件异常：非法访问内存（段错误），除0（浮点数异常），内存对齐出错（总线错误）
+    - 未决：
+        - 屏蔽（阻塞）
+        - 阻塞信号集/信号屏蔽字
+        - 未决信号集
+    - 递达：到达进程
+    - 处理：信号不位于阻塞信号集（1在0不在）和未决信号集中
+        - 默认处理
+        - 忽略/丢弃
+        - 捕获并处理（即用户自定义处理函数）
+4）信号四要素：
+    - 编号：也是信号的值（不同架构可能不同）
+        - 1-31：常规信号（标准）
+        - 34-64：实时信号（与驱动，硬件有关）
+            - SIGRTMIN：实时信号的最小值（34）
+            - SIGRTMAX：实时信号的最大值（64）
+    - 名称：SIG*
+    - 事件：所代表的信号信息
+    - 默认处理：5种
+        - Term：终止进程
+        - Ign：忽略信号
+        - Core：终止进程并生成Core文件（用于gdb调试，检查进程终止原因）
+        - Stop：停止（暂停）进程
+        - Cont：继续运行进程
+5）信号表（标准）：man 7 signal查出来的信号最多有三个值，前中后分别代表[alpha/sparc|x86/arm/powerpc/...|mips]
+    - SIGHUP（1|Term）：用户退出shell时产生，发送给该shell启动的所有进程
+    - SIGINT（2|Term）：用户<Ctrl+c>按键时产生，发送给正在终端运行的进程
+    - SIGQUIT（3|Core）：用户<Ctrl+>按键时产生，发送给正在终端运行的进程
+    - SIGILL（4|Core）：某进程非法指令（CPU检测）时产生
+    - SIGTRAP（5|Core）：某进程执行断点指令或其他trap指令时产生
+    - SIGABRT（6|Core）：某进程调用abort函数时产生
+    - SIGBUS（7|Core）：某进程总线错误时产生
+    - SIGFPE（8|Core）：某进程算术错误（浮点数运算，溢出，除数为0等）时产生
+    - SIGKILL（9|Term）：无条件终止某进程，*且不可被捕获，不可忽略，不可阻塞
+    - SIGUSE1（10|Term）：用户自定义信号
+    - SIGSEGV（11|Core）：某进程无效内存访问时产生
+    - SIGUSR2（12|Term）：用户自定义信号
+    - SIGPIPE（13|Term）：Broken管道向一个没有读端的管道写数据时产生
+    - SIGALRM（14|Term）: alarm()设置的定时器超时产生
+    - SIGTERM（15|Term）：程序结束时（正常退出）产生
+    - SIGSTKFLT（16|Term）：不再使用，保留兼容
+    - SIGCHLD（17|Ign）：子进程结束时，发送给父进程
+    - SIGCONT（18|Cont）：如果进程已停止，则使其继续运行
+    - SIGSTOP（19|Stop）：停止进程，*且不可被捕获，不可忽略，不可阻塞
+    - SIGTSTP（20|Stop）：用户<Ctrl+z>按键时产生，发送给正在终端运行的进程
+    - SIGTTIN（21|Stop）：后台进程读终端时产生
+    - SIGTTOU（22|Stop）: 后台进程写终端时产生，类似SIGTTIN
+    - SIGURG（23|Ign）：套接字上有紧急数据（网络带外数据）时产生，发送给当前正在运行的进程
+    - SIGXCPU（24|Term）：进程执行时间超过了分配给该进程的CPU时间时产生
+    - SIGXFSZ（25|Term）：超过文件的最大长度设置时产生
+    - SIGVTALRM（26|Term）：虚拟时钟超时时产生，类似SIGALRM（只计算该进程占用CPU的使用时间）
+    - SGIPROF（27|Term）：虚拟时钟超时时产生，类似SIGVTALRM（包括该进程占用CPU的时间，及执行系统调用的时间）
+    - SIGWINCH（28|Ign）：窗口变化大小时产生
+    - SIGIO（29|Ign）：向进程指示发出了一个异步IO事件产生
+    - SIGPWR（30|Term）：关机时产生
+    - SIGSYS（31|core）：无效的系统调用时产生
+6）信号宏：
+    - SIG_DFL：默认的信号
+    - SIG_ERR：错误的信号
+    - SIG_IGN：忽略的信号
+
+20. 浮点数
+1）特殊浮点数表示：
+    - NaN：Not a Number，非数字，如0.0/0.0，对负数求平方根
+    - Inf：∞，无穷大
+2）浮点数异常：产生异常时声明相关宏
+    - FE_INEXACT：精度损失
+    - FE_UNDERFLOW：下溢
+    - FE_OVERFLOW：上溢
+    - FE_DIVBYZERO：被0除
+    - FE_INVALID：不合法的浮点运算
+    - 对arm而言：
+        - #define FE_INVALID    1
+        - #define FE_DIVBYZERO  2
+        - #define FE_OVERFLOW   4
+        - #define FE_UNDERFLOW  8
+        - #define FE_INEXACT    16
+
+21. 特性测试宏
+1）_POSIX_SOURCE：遵从POSIX.1-1990和ISO C（1990）标准，后被_POSIX_C_SOURCE替代
+2）_POSIX_C_SOURCE：=1=_POSIX_SOURCE；≥199309=POSIX.1b（实时）；≥199506=POSIX.1c（线程）；=200112=POSIX.1-2001；=200809=POSIX.1-2008
+3）_BSD_SOURCE：遵从BSD标准，且_POSIX_C_SOURCE =199506
+4）_SVID_SOURCE：遵从System V接口规范（SVID，System V Interface Definition）
+5）_GNU_SOURCE：遵从GNU扩展定义
+
+22. 原子
+1）原子操作是不可分割的，在执行完毕之前不会被任何其它任务或事件中断（在多线程中）
