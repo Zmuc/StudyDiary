@@ -243,8 +243,115 @@
             - 举例：avc_has_perm(&selinux_state, current_sid(), task_sid(p), SECCLASS_PROCESS, PROCESS__GETSCHED, NULL);
                 - 判定权限：allow s_t t_t:process getsched;
 
+5. 管道（pipefs）
+1）管道分为读写两端（单向），即读端fd[0]，写端fd[1]
+2）管道的fd对应文件并非是文件系统中的文件，而是存在内存中的特殊文件（即不涉及外存I/0）
+3）管道的缓冲区是一个环形缓冲区，通过读写指针模拟读写端：
+-----------------------------------------------------------------
+(...|4K|3.7K|4K|...|4K|<-write|0（可写入）|0|read->|4K|...|4K|...)
+-----------------------------------------------------------------
+// 管道缓冲区是PAGE（4K=4096，单位B/Byte）的倍数，可配置（默认为16*4K）
+// 某PAGE为3.7K，代表该PAGE未写满
+4）管道的读写：
+a. 空白管道write 4097
+| |       |  | |
+|0|  -->  |4K|1|
+| |       |  | |
+// 先写满一个PAGE，再在新的PAGE写入1
+b. 再write 2048
+|  | |       |  |    |
+|4K|1|  -->  |4K|2049|
+|  | |       |  |    |
+// 当前PAGE（写指针）还有4095可用，直接将2048写入当前PAGE，即1+2048=2049
+c. 再write 4097
+|  |    |       |  |    |  | |
+|4K|2049|  -->  |4K|2049|4K|1|
+|  |    |       |  |    |  | |
+// 要写入4097，当前PAGE不够用（4097>(4096-2049)），新开一个PAGE写满，再开一个PAGE写入1
 
-5. 驱动（driver）
+
+6. 信号
+/* 信号 */
+#define  _NSIG  64  // 其中1-31（有具体宏）非实时信号，34-64（SIGRTMIN-SIGRTMAX）实时信号
+/*** 信号与进程 ***/
+struct task_struct {  // 进程管理结构体中涉及信号的字段
+    ...
+    int sigpending;  // 是否有信号需要处理（1：有；0：没有）
+    ...
+    sigset_t blocked;  // 被该进程屏蔽的信号集
+    struct signal_struct *sig;  // 信号处理
+    struct sigpending pending;  // 进程接收到的信号队列（未决）
+    ...
+}
+
+/*** sig ***/
+struct signal_struct {
+    atomic_t count;
+    struct k_sigaction action[_NSIG];  // 每个信号对应的k_sigaction结构体（也是sigaction结构体的简单封装）
+    spinlock_t siglock;
+};
+
+struct k_sigaction {
+    struct sigaction sa;
+};
+​
+struct sigaction {
+    __sighandler_t sa_handler;  // <typedef void (*__sighandler_t)(int);>函数指针，即信号处理函数
+    unsigned long sa_flags;  // 信号处理标志位（SA_SIGINFO/SA_RESTART/SA_NODEFER）
+    void (*sa_restorer)(void);  // NULL
+    sigset_t sa_mask;  // 信号处理中阻塞的信号集
+};
+
+/*** pending ***/
+struct sigpending {
+    struct sigqueue *head, **tail;
+    sigset_t signal;
+};
+
+struct sigqueue {
+    struct sigqueue *next;
+    siginfo_t info;
+};
+
+/* 信号发送 */
+kill()
+  |                    用户态
+---------------------------------------------------------------------------------------
+  |                    内核态
+sys_kill()  // 系统调用
+  |---> prepare_kill_siginfo() // 初始化kernel_siginfo
+  |---> kill_something_info()  // 参数分析
+               |---> kill_proc_info()->kill_pid_info()
+                            |---> pid_task()  // 通过PID获得task_struct结构体
+                            |---> group_send_sig_info()  // 发送信号给进程组（>0单个信号/=0当前信号组/<0指定信号组）
+                                       |---> check_kill_permission()  // 检测权限
+                                       |---> do_send_sig_info()
+                                                    |---> send_signal()->__send_signal()  // 发送信号
+                                                                  |---> __sigqueue_alloc()  // 申请sigqueue结构体（通过list_add_tail加入到sigpending结构体）
+                                                                  |---> sigaddset()  // 设置标志位（sigpending->sigset_t），表示进程收到该信号（未决）
+                                                                  |---> complete_signal()  // 完成发送
+                                                                               |---> signal_wake_up()  // 唤醒（task_struct->sigpending设为1）
+
+/* 信号处理 */
+do_signal（根据task_struct->sigpending是否为1）
+do_signal()
+  |                        区分架构
+--------------------------------------------------------------------------------------
+  |                        统一接口
+get_signal()  // 获取信号
+  |---> trace_signal_deliver()  // dequeue_synchronous_signal()为true时优先处理指令产生的信号（非终止再入循环）
+  |---> dequeue_signal()  // 处理队列中的信号（需上信号锁）
+  |          |---> __dequeue_signal()
+  |                 |---> next_signal()  // 从未决信号集中选择下一个需要处理（阻塞除外）的信号
+  |                 |---> collect_signal()  // 遍历未决信号集并找到相应的信号
+  |          |---> recalc_sigpending()  // 更新未决信号集，检查阻塞和挂起的信号，确认哪些信号要被传递
+--------------------------------------------------------------------------------------
+  |                        区分架构
+handle_signal()  // 处理信号
+// 如果用户态程序自定义信号处理程序，则会由内核态->用户态（执行）->内核态
+
+
+99. 驱动（driver）
 1）对底层硬件设备的操作进行封装，并向上层提供函数接口，通过接口驱动底层硬件
 2）被驱动的设备分类：
     - 字符设备文件 -> 字符设备驱动 -> 字符设备（c）：一个字节一个字节读取，有先后顺序（面向流），不能随机读取设备内存中的数据，如串口，字符终端，键盘，鼠标等
