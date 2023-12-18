@@ -540,6 +540,20 @@ int sigpending(sigset_t *set);
 // 返回值：0（失败：-1）
 // 未决（pending），信号从产生到传递给进程前的状态
 
+/* 等待指定子进程 */
+pid_t waitpid(pid_t pid, int *status, int options);
+// pid：等待指定pid的子进程（-1等待任一子进程）
+// status：子进程的状态
+// options：0是阻塞状态（一直等）；WNOHANG是非阻塞状态（立即返回）
+// 返回值：子进程的PID（失败：-1；WNOHANG时无已退出子进程：0）
+#include <sys/wait.h>
+
+/* 提取wait结果中的status信息 */
+WIFSIGNALED(status)：如果进程是收到信号而终止的，返回true
+WIFEXITED(status): 如果进程是正常终止的（没有收到信号），返回true
+WTERMSIG(status)：查看进程收到的信号（正常退出是SIGCHLD）
+WEXITSTATUS(status): 查看进程的退出状态
+
 /* semget：创建/获取（已有）信号量 */
 int semget(key_t key, int nsems, int semflg);
 // #include <sys/sem.h>
@@ -884,3 +898,82 @@ struct msghdr {
     int           msg_flags;       // 信息模式（sendmsg忽略）
 };
 #include <sys/socket.h>
+
+/* ————————————————————————————————————————————————————————————————————————————————————————————————————
+ * POSIX线程 / pthread.h
+ * ——————————————————————————————————————————————————————————————————————————————————————————————————— */
+
+/* 创建子线程 */
+int pthread_create(pthread_t *pid, const pthread_attr_t *attr, void*(*start_routine)(void *), void *arg);
+// pid：指向创建的线程ID（需创建成功）
+// attr：指向线程属性（分离状态，调度策略，调度参数，优先级...），若NULL则使用默认属性
+// start_routine：指向线程函数的地址
+// arg：传给线程函数的参数，需要在start_routine中转换（调用：其他->void */实现：void *->其他）
+
+/* 线程的属性 */
+union pthread_attr_t {
+    char __size[__SIZEOF_PTHREAD_ATTR_T];  // 具体的属性位于__size数组中，有专门的API用于存取
+    long int __align;
+};
+// __detachstate：新线程是否与其他线程可连接/可分离
+//   - PTHREAD_CREATE_JOINABLE：默认，可连接，新线程退出后需要pthread_join()释放占用资源，可通过pthread_detach()设置为PTHREAD_CREATE_DETACH：
+//   - PTHREAD_CREATE_DETACH：可分离，新线程退出时释放占用资源
+// __schedpolicy：调度策略
+//   - SCHED_OTHER：默认，非实时，可通过pthread_setschedparam()设置为SCHED_RR/SCHED_FIFO
+//   - SCHED_RR：实时，时间片轮转法，仅对ROOT有效
+//   - SCHED_FIFO：实时，先入先出，仅对ROOT有效
+// __schedparam：调度参数，运行优先级（sched_param.sched_priority）
+//   - 0：默认，仅SCHED_RR/SCHED_FIFO生效，可通过pthread_setschedparam()设置
+// __inheritsched：调度策略和调度参数的确认
+//   - PTHREAD_EXPLICIT_SCHED：默认，使用显示指定的调度策略和调度参数（即pthread_create()中attr参数）
+//   - PTHREAD_INHERIT_SCHED：继承线程调用者的调度策略和调度参数
+// __scope：线程间竞争CPU的范围
+//   - PTHREAD_SCOPE_SYSTEM：默认，与系统中所有线程一起竞争CPU
+//   - PTHREAD_SCOPE_PROCESS：仅与同进程间的线程竞争CPU
+
+/* 获取线程的属性 */
+int pthread_getattr_np(pthread_t pid, pthread_attr_t *attr);
+// pid：线程ID
+// attr：指向线程的属性（该联合体不需要时要进行销毁，pthread_attr_destroy）
+// Tip：该函数依赖#define _GNU_SOURCE
+
+/* 销毁线程属性 */
+int pthread_attr_destroy(pthread_attr_t *attr);
+// attr：线程属性
+
+/* 初始化线程属性 */
+int pthread_attr_init(pthread_attr_t *attr);
+// attr：线程属性
+
+/* 获取线程默认栈大小 */
+int pthread_attr_getstacksize(pthread_attr_t *attr, size_t *stacksize);
+// attr：线程属性
+// stacksize：栈大小
+
+/* 等待子线程执行完毕，阻塞函数，会让主线程挂起（让出CPU） */
+int pthread_join(pthread_t pid, void **value_ptr);
+// pid：等待执行完毕的子线程ID
+// value_ptr：复制子线程退出值到一个内存区域，并让*value_ptr指向该内存区域，若NULL则只等待
+
+/* 退出线程 */
+void pthread_exit(void *retval);
+// retval：返回给主进程的值
+
+/* 取消线程 */
+int pthread_cancel(pthread_t thread);
+// thread：待取消的线程（在取消点取消：printf/read/write/sleep/pthread_testcancel等）
+// 如果取消成功返回PTHREAD_CANCELED（-1）
+
+/* 子线程取消检测 */
+void pthread_testcancel(void);
+
+/* 清理上锁资源（成对调用） */
+void pthread_cleanup_push(void (*routine)(void *),void *arg);
+void pthread_cleanup_pop(int execute);
+
+/* 初始化互斥锁 */
+int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr);
+// restrict：修饰指针的关键字，保证了锁的唯一性（如p指向一块内存，让pp = p，也可访问该内存，但restrict修饰的情况下不可访问）
+// mutex：指向互斥锁的指针
+// attr：指定互斥锁的属性
+
